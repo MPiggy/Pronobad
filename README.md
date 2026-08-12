@@ -44,8 +44,8 @@ npm run dev
 |---|---|---|
 | `DATABASE_URL` | Supabase → Database → Connection string | **Pooled** connection, port 6543, with `?pgbouncer=true` |
 | `DIRECT_URL` | Same page | **Direct** connection, port 5432 — migrations must bypass the pooler |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → API | |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API | Safe to expose; it is the public key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → API Keys | |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → API Keys | The `sb_publishable_…` key. Public by design, safe to expose |
 | `NEXT_PUBLIC_SITE_URL` | Your Vercel URL | Magic-link redirects are built from this |
 | `SUPERADMIN_EMAIL` | Your email | Only read by the seed script |
 
