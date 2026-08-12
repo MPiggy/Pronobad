@@ -109,6 +109,43 @@ Two rules worth keeping:
   `src/lib/supabase/server.ts` swallows that error. Remove the proxy and
   refreshed tokens are silently dropped, which presents as random logouts.
 
+## Permissions, scoring, locking
+
+The rules are pure functions, separated from the database access that feeds
+them. That split is deliberate: these are the parts that must be exhaustively
+tested, and they are far easier to test when answering "may this user do X" or
+"how many points is this worth" needs no database.
+
+| File | Role |
+|---|---|
+| `src/lib/auth/permissions.ts` | Pure rules — who may manage a fixture, import, promote admins |
+| `src/lib/auth/guards.ts` | Loads the actor, throws `ForbiddenError` / `NotFoundError` |
+| `src/lib/scoring/rules.ts` | 1 pt correct winner, 3 pts exact score — the 3 **replaces** the 1 |
+| `src/lib/scoring/engine.ts` | Freezes points into `PredictionScore`, in one transaction |
+| `src/lib/predictions/locking.ts` | Whether a fixture still accepts predictions |
+
+Three behaviours worth knowing:
+
+- **Scoring is idempotent.** An admin correcting a wrong result re-runs it, and
+  the second run overwrites the first rather than double-counting.
+- **A fixture with a result is locked** even if `locksAt` is still in the
+  future. `locksAt` is admin-editable, so without this, moving it backwards
+  would reopen predictions on a scoreline everyone can already see.
+- **Membership never implies admin rights.** `ClubAdmin` is the only source, so
+  changing club cannot silently carry rights over.
+
+## Seeding
+
+```bash
+npm run db:seed                     # superadmin only
+SEED_DEMO_DATA=true npm run db:seed # + demo clubs, teams, fixtures
+```
+
+Idempotent — safe to re-run. `SUPERADMIN_EMAIL` does not need an existing
+account: the row is pre-created with a placeholder `authId` and claimed the
+first time that address signs in, since the Supabase id cannot be known ahead
+of time.
+
 ## Scripts
 
 | Script | Purpose |

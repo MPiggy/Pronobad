@@ -57,13 +57,28 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     throw new Error(`Supabase user ${authUser.id} has no email address.`)
   }
 
+  const existing = await db.user.findUnique({ where: { authId: authUser.id } })
+
+  if (existing) {
+    // A returning member. Refresh the email in case they changed it in
+    // Supabase; `name` is deliberately left alone — it is theirs to edit in the
+    // app, and rewriting it from the email on every login would undo that.
+    if (existing.email === email) return existing
+
+    return await db.user.update({
+      where: { id: existing.id },
+      data: { email },
+    })
+  }
+
+  // No row for this Supabase id. There may still be one for this address: the
+  // seed script pre-creates the first superadmin before they have ever logged
+  // in, since their Supabase id cannot be known in advance. Claim that row
+  // rather than inserting a second one — which would fail on the unique email
+  // anyway, and would silently drop the superadmin flag if it did not.
   return await db.user.upsert({
-    where: { authId: authUser.id },
-    // A returning member: refresh the email in case they changed it in
-    // Supabase. `name` is deliberately not overwritten — it is theirs to edit
-    // in the app, and clobbering it with an email prefix on every login would
-    // undo that.
-    update: { email },
+    where: { email },
+    update: { authId: authUser.id },
     create: {
       authId: authUser.id,
       email,
@@ -78,7 +93,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
  * The current member, or a redirect to the login page.
  *
  * For pages and actions where being signed out is not a state worth rendering.
- * Middleware already gates these routes; this is the server-side backstop that
+ * The proxy already gates these routes; this is the server-side backstop that
  * makes the guarantee real rather than advisory.
  */
 export async function requireUser(): Promise<User> {
