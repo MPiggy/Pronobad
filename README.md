@@ -42,8 +42,8 @@ npm run dev
 
 | Variable | Where it comes from | Notes |
 |---|---|---|
-| `DATABASE_URL` | Supabase → Database → Connection string | **Pooled** connection, port 6543, with `?pgbouncer=true` |
-| `DIRECT_URL` | Same page | **Direct** connection, port 5432 — migrations must bypass the pooler |
+| `DATABASE_URL` | Supabase → Database → Connection string | **Transaction pooler**, port 6543, with `?pgbouncer=true` |
+| `DIRECT_URL` | Same page | **Session pooler**, port 5432 — migrations need session-level features |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → API Keys | |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → API Keys | The `sb_publishable_…` key. Public by design, safe to expose |
 | `NEXT_PUBLIC_SITE_URL` | Your Vercel URL | Magic-link redirects are built from this |
@@ -51,6 +51,11 @@ npm run dev
 
 The build runs `prisma generate && next build`, so the Prisma client is
 regenerated on every deploy.
+
+> **Use the pooler host, not the direct one.** Supabase's direct host
+> (`db.PROJECT_REF.supabase.co`) resolves IPv6-only. It works from a local
+> machine but is unreachable from Vercel, which has no IPv6 outbound — the
+> failure looks like a connection timeout with no obvious cause.
 
 ### Migrations on deploy
 
