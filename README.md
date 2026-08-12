@@ -16,7 +16,13 @@ Mobile-first: members open this on a phone, in a gym, on bad wifi.
 ## Requirements
 
 Node **22.12+** (Prisma 7 requires `^20.19 || ^22.12 || >=24`). The repo pins
-22.23.2 via `.nvmrc`.
+22.23.2 via `.nvmrc`, and `.npmrc` sets `engine-strict=true` so an older Node
+fails with a version error instead of an opaque `ERR_REQUIRE_ESM` from inside
+Prisma.
+
+Check with `node --version` before `npm install`. On Windows a system-wide Node
+in the machine `PATH` takes precedence over anything nvm sets, so `nvm use` can
+appear to work while `node` still resolves to the old version.
 
 ## Local setup
 
@@ -57,6 +63,19 @@ regenerated on every deploy.
 > machine but is unreachable from Vercel, which has no IPv6 outbound — the
 > failure looks like a connection timeout with no obvious cause.
 
+### Supabase Auth configuration
+
+Under **Authentication → URL Configuration**, set:
+
+- **Site URL** — `https://your-app.vercel.app`
+- **Redirect URLs** — add `http://localhost:3000/auth/callback` and
+  `https://your-app.vercel.app/auth/callback`
+
+Supabase rejects any `emailRedirectTo` that is not on this allow-list. When it
+does, the magic-link email still arrives and the link still looks correct, but
+clicking it lands on the Site URL with no session — which reads as "login
+silently does nothing" rather than as a configuration error.
+
 ### Migrations on deploy
 
 Migrations are **not** run automatically — that would make every deploy a
@@ -65,6 +84,30 @@ schema change. Run them deliberately:
 ```bash
 npm run db:deploy
 ```
+
+## Auth
+
+Magic link only — no passwords. Supabase owns identity (`auth.users`); this app
+owns club membership, the superadmin flag and predictions. `User.authId` joins
+the two, and `src/lib/auth/session.ts` is the only place that crossing happens.
+
+| File | Role |
+|---|---|
+| `src/proxy.ts` | Refreshes the session on every request, redirects signed-out members to `/login` |
+| `src/lib/supabase/{client,server,proxy}.ts` | Supabase clients for browser, server render, and proxy |
+| `src/lib/auth/session.ts` | `getCurrentUser` / `requireUser` / `requireOnboardedUser` |
+| `src/app/auth/callback/route.ts` | Exchanges the magic-link code for a session |
+
+A `User` row is created on first login rather than by a database trigger, so
+the whole flow stays in application code where it can be read and tested.
+
+Two rules worth keeping:
+
+- **`getUser()`, never `getSession()`, on the server.** The session cookie is
+  attacker-supplied; only `getUser()` validates the JWT against the auth server.
+- **The proxy is load-bearing.** Server Components cannot write cookies, so
+  `src/lib/supabase/server.ts` swallows that error. Remove the proxy and
+  refreshed tokens are silently dropped, which presents as random logouts.
 
 ## Scripts
 

@@ -1,0 +1,104 @@
+import { cache } from 'react'
+import { redirect } from 'next/navigation'
+import { db } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
+import type { User } from '@/generated/prisma/client'
+
+/**
+ * The authenticated member's row in our own `User` table.
+ *
+ * Supabase owns identity (`auth.users`); we own everything domain-related —
+ * club membership, superadmin flag, predictions. `User.authId` is the join
+ * between the two, and this module is the only place that crossing happens.
+ */
+
+/**
+ * Reads the verified Supabase identity for the current request.
+ *
+ * `getUser()` rather than `getSession()`: the session cookie is attacker-
+ * supplied data, and only `getUser()` validates the JWT against the auth
+ * server. Trusting the cookie's contents here would let anyone mint a session
+ * for any account.
+ *
+ * `cache()` deduplicates this within a single render pass — a layout and three
+ * components asking who the user is costs one round-trip, not four.
+ */
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) return null
+
+  return user
+})
+
+/**
+ * The current member's `User` row, creating it on first login.
+ *
+ * Supabase writes to `auth.users` when a magic link is verified, and nothing
+ * automatically mirrors that into our schema. Provisioning here — rather than
+ * via a database trigger — keeps the whole flow in application code where it
+ * can be read and tested, at the cost of one upsert per cold session.
+ *
+ * Returns `null` when signed out, so callers decide whether that is an error.
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
+  const authUser = await getAuthUser()
+  if (!authUser) return null
+
+  const email = authUser.email
+  if (!email) {
+    // Every provider we enable (magic link) is email-based, so this means a
+    // misconfigured provider rather than an ordinary signed-out state.
+    throw new Error(`Supabase user ${authUser.id} has no email address.`)
+  }
+
+  return await db.user.upsert({
+    where: { authId: authUser.id },
+    // A returning member: refresh the email in case they changed it in
+    // Supabase. `name` is deliberately not overwritten — it is theirs to edit
+    // in the app, and clobbering it with an email prefix on every login would
+    // undo that.
+    update: { email },
+    create: {
+      authId: authUser.id,
+      email,
+      // A placeholder until onboarding collects a real name. Not left empty so
+      // that leaderboards always have something to render.
+      name: email.split('@')[0] ?? 'Membre',
+    },
+  })
+})
+
+/**
+ * The current member, or a redirect to the login page.
+ *
+ * For pages and actions where being signed out is not a state worth rendering.
+ * Middleware already gates these routes; this is the server-side backstop that
+ * makes the guarantee real rather than advisory.
+ */
+export async function requireUser(): Promise<User> {
+  const user = await getCurrentUser()
+
+  if (!user) redirect('/login')
+
+  return user
+}
+
+/**
+ * The current member, once they have completed onboarding.
+ *
+ * Predictions are scoped to a club, so a member without one has nothing to do
+ * in the app yet. Routes that assume a club use this instead of `requireUser`.
+ */
+export async function requireOnboardedUser(): Promise<User & { clubId: string }> {
+  const user = await requireUser()
+
+  if (!user.clubId) redirect('/onboarding')
+
+  return { ...user, clubId: user.clubId }
+}
