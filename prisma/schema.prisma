@@ -1,0 +1,208 @@
+// Pronobad — interclub badminton predictions.
+// See PLAN.md for the reasoning behind each modelling decision.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: connection URLs live in prisma.config.ts, not here.
+datasource db {
+  provider = "postgresql"
+}
+
+/// A season scopes almost everything: teams change division, members change
+/// club, and leaderboards reset. Modelled from day one rather than retrofitted.
+model Season {
+  id        String   @id @default(cuid())
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  teams       Team[]
+  matches     Match[]
+  predictions Prediction[]
+  scores      PredictionScore[]
+
+  @@index([isCurrent])
+}
+
+model Club {
+  id     String  @id @default(cuid())
+  name   String
+  region String?
+
+  createdAt DateTime @default(now())
+
+  teams   Team[]
+  members User[]
+  admins  ClubAdmin[]
+
+  @@unique([name])
+}
+
+model Team {
+  id       String @id @default(cuid())
+  name     String
+  division String
+
+  clubId   String
+  club     Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  homeMatches Match[] @relation("HomeTeam")
+  awayMatches Match[] @relation("AwayTeam")
+
+  @@unique([clubId, seasonId, name])
+  @@index([seasonId])
+  @@index([clubId])
+}
+
+/// `clubId` is membership — the club whose fixtures this user predicts.
+/// Admin rights live in ClubAdmin, never here: a `role` enum would conflate
+/// "which club am I in" with "which clubs may I administer", and the two
+/// drift apart as soon as someone changes club or administers two.
+model User {
+  id           String  @id @default(cuid())
+  /// Supabase auth.users.id — the link between our tables and the auth system.
+  authId       String  @unique
+  email        String  @unique
+  name         String
+  isSuperadmin Boolean @default(false)
+
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  adminOf     ClubAdmin[]
+  predictions Prediction[]
+  scores      PredictionScore[]
+  auditLogs   AuditLog[]
+
+  @@index([clubId])
+}
+
+/// One row per club administered. Superadmins bypass this table entirely.
+model ClubAdmin {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  grantedAt DateTime @default(now())
+
+  @@id([userId, clubId])
+  @@index([clubId])
+}
+
+enum MatchStatus {
+  UPCOMING
+  LIVE
+  FINISHED
+}
+
+/// A fixture between two teams. `locksAt` is deliberately separate from
+/// `playedAt`: interclub fixtures get postponed, and without its own column a
+/// reschedule would retroactively reopen predictions that had already closed.
+model Match {
+  id       String @id @default(cuid())
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  homeTeamId String
+  homeTeam   Team   @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId String
+  awayTeam   Team   @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+
+  playedAt DateTime
+  locksAt  DateTime
+  round    Int
+
+  status    MatchStatus @default(UPCOMING)
+  homeScore Int?
+  awayScore Int?
+
+  resultEnteredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  predictions Prediction[]
+
+  @@unique([seasonId, homeTeamId, awayTeamId, round])
+  @@index([seasonId, playedAt])
+  @@index([status])
+}
+
+/// Scores are stored as two integers, never as a "5-3" string: comparing
+/// predictions to results is arithmetic, not string parsing.
+model Prediction {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  homeScore Int
+  awayScore Int
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  score PredictionScore?
+
+  /// One prediction per user per fixture; edits update the row in place.
+  @@unique([userId, matchId])
+  @@index([matchId])
+  @@index([seasonId, userId])
+}
+
+/// Points are frozen here when a result is entered, never recomputed on read.
+/// `ruleApplied` records *why* a user got these points, so the scale can change
+/// without rewriting history and a member can be told how their score was made.
+model PredictionScore {
+  id           String     @id @default(cuid())
+  predictionId String     @unique
+  prediction   Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  points      Int
+  ruleApplied String
+
+  computedAt DateTime @default(now())
+
+  @@index([seasonId, userId])
+  @@index([userId])
+}
+
+/// Covers the two actions that can silently rewrite a leaderboard: entering a
+/// result, and moving `locksAt`.
+model AuditLog {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action   String
+  entity   String
+  entityId String
+
+  before Json?
+  after  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

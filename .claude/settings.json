@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(git -C e:/arahkun-tattoo/Proj/Pronobad status --short)",
+      "Bash(git -C e:/arahkun-tattoo/Proj/Pronobad branch --show-current)",
+      "Bash(npm view *)",
+      "WebFetch(domain:www.prisma.io)",
+      "PowerShell(nvm use 22.23.2)",
+      "PowerShell(nvm list)"
+    ]
+  }
+}

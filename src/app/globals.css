@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+/*
+ * Mobile-first design tokens.
+ * Members open this on a phone, in a gym, on bad wifi — every value below
+ * is chosen for that context first and scaled up for desktop after.
+ */
+@theme {
+  --color-court: oklch(0.55 0.15 155);
+  --color-court-dark: oklch(0.45 0.14 155);
+  --color-court-light: oklch(0.95 0.03 155);
+
+  --color-shuttle: oklch(0.98 0.005 250);
+  --color-ink: oklch(0.22 0.02 250);
+  --color-ink-soft: oklch(0.48 0.02 250);
+  --color-line: oklch(0.9 0.01 250);
+
+  --color-win: oklch(0.6 0.16 150);
+  --color-loss: oklch(0.6 0.19 25);
+  --color-pending: oklch(0.7 0.13 75);
+}
+
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  color-scheme: light;
+}
+
+html {
+  /* Prevent iOS zooming form fields on focus; 16px is the threshold. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-shuttle);
+  color: var(--color-ink);
+  /* Room for the fixed bottom nav plus the iPhone home indicator. */
+  padding-bottom: calc(4rem + var(--safe-bottom));
+  overscroll-behavior-y: none;
+}
+
+/* Touch targets: 44px minimum per Apple HIG, 48dp per Material. */
+button,
+a[role='button'],
+input,
+select {
+  min-height: 2.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
