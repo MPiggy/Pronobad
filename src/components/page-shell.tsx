@@ -1,19 +1,14 @@
 import type { ReactNode } from 'react'
 import Image from 'next/image'
-import { getActor } from '@/lib/auth/guards'
-import { BottomNav } from '@/components/bottom-nav'
 import logo from '@/app/icon.png'
 
 /**
- * The frame every signed-in page renders inside: title block, content column,
- * bottom nav.
+ * The title block + content column every signed-in page renders inside.
  *
- * The admin tab is decided here, once, from the actor's real rights rather
- * than passed in by each page — a page forgetting the flag would silently hide
- * the tab from an admin. Hiding it is presentation only; `guards.ts` is what
- * actually stops a non-admin from reaching those routes.
+ * The bottom nav lives in `(app)/layout.tsx` instead of here, so it persists
+ * across navigation between tabs rather than remounting on every page.
  */
-export async function PageShell({
+export function PageShell({
   title,
   subtitle,
   action,
@@ -24,36 +19,30 @@ export async function PageShell({
   action?: ReactNode
   children: ReactNode
 }) {
-  const actor = await getActor()
-
   return (
-    <>
-      <main className="mx-auto w-full max-w-md px-5 pt-[calc(1.5rem+var(--safe-top))]">
-        <header className="mb-6 flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <Image
-              src={logo}
-              alt=""
-              className="h-10 w-10 shrink-0 object-contain"
-              priority
-            />
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-tight text-shuttle-text">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-1 text-sm text-shuttle-text-soft">{subtitle}</p>
-              )}
-            </div>
+    <main className="mx-auto w-full max-w-md px-5 pt-[calc(1.5rem+var(--safe-top))]">
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <Image
+            src={logo}
+            alt=""
+            className="h-10 w-10 shrink-0 object-contain"
+            priority
+          />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-shuttle-text">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="mt-1 text-sm text-shuttle-text-soft">{subtitle}</p>
+            )}
           </div>
-          {action}
-        </header>
+        </div>
+        {action}
+      </header>
 
-        {children}
-      </main>
-
-      <BottomNav showAdmin={actor.isSuperadmin} />
-    </>
+      {children}
+    </main>
   )
 }
 
