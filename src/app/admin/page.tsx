@@ -12,6 +12,7 @@ import {
   toParisDateTimeLocal,
 } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { Sheet, StatusLabel } from '@/components/sheet'
 import { MatchAdminForm } from './match-admin-form'
 
 export const metadata: Metadata = {
@@ -39,7 +40,6 @@ export default async function AdminPage() {
     return (
       <PageShell title="Administration">
         <EmptyState
-          icon="⚙️"
           title="Aucune saison ouverte"
           body="Créez une saison pour pouvoir saisir des résultats."
         />
@@ -91,65 +91,74 @@ export default async function AdminPage() {
       }
     >
       {awaitingResult > 0 && (
-        <p className="mb-4 rounded-xl border border-pending/40 bg-pending/10 px-4 py-3 text-sm text-ink">
-          {awaitingResult} rencontre{awaitingResult > 1 ? 's' : ''} en attente de
-          résultat.
+        <p className="mb-4 rounded-lg border border-line bg-sheet px-4 py-3 text-sm text-ink">
+          <span className="num font-semibold">{awaitingResult}</span> rencontre
+          {awaitingResult > 1 ? 's' : ''} en attente de résultat.
         </p>
       )}
 
       {matches.length === 0 ? (
         <EmptyState
-          icon="⚙️"
           title="Aucune rencontre"
           body="Aucune rencontre à administrer pour cette saison."
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {matches.map((match) => {
             const hasResult =
               match.homeScore !== null && match.awayScore !== null
+            const awaiting = !hasResult && isLocked(match, now)
 
             return (
-              <li
-                key={match.id}
-                className="rounded-2xl border border-line bg-white p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <time
-                    dateTime={match.playedAt.toISOString()}
-                    className="text-xs font-medium text-ink-soft"
-                  >
-                    J{match.round} · {formatMatchDateTime(match.playedAt)}
-                  </time>
+              <li key={match.id}>
+                <Sheet marker={hasResult ? 'win' : awaiting ? 'action' : 'none'}>
+                  <div className="py-3.5 pl-4 pr-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <time
+                        dateTime={match.playedAt.toISOString()}
+                        className="text-xs font-medium text-ink-soft"
+                      >
+                        J{match.round} · {formatMatchDateTime(match.playedAt)}
+                      </time>
 
-                  {hasResult ? (
-                    <span className="shrink-0 rounded-full bg-win/15 px-2.5 py-1 text-xs font-semibold text-ink">
-                      {formatScore(match.homeScore!, match.awayScore!)}
-                    </span>
-                  ) : (
-                    <span className="shrink-0 rounded-full bg-pending/15 px-2.5 py-1 text-xs font-semibold text-ink">
-                      {isLocked(match, now) ? 'Résultat attendu' : 'À venir'}
-                    </span>
-                  )}
-                </div>
+                      <StatusLabel>
+                        {hasResult
+                          ? 'Résultat saisi'
+                          : awaiting
+                            ? 'Résultat attendu'
+                            : 'À venir'}
+                      </StatusLabel>
+                    </div>
 
-                <p className="mt-2 text-sm font-medium text-ink">
-                  {match.homeTeam.name} — {match.awayTeam.name}
-                </p>
+                    <div className="mt-2 flex items-baseline justify-between gap-3">
+                      <p className="truncate text-sm font-medium text-ink">
+                        {match.homeTeam.name}
+                        <span className="mx-1.5 text-ink-faint">contre</span>
+                        {match.awayTeam.name}
+                      </p>
 
-                <p className="mt-1 text-xs text-ink-soft">
-                  {match._count.predictions} pronostic
-                  {match._count.predictions > 1 ? 's' : ''}
-                </p>
+                      {hasResult && (
+                        <span className="num shrink-0 text-lg font-semibold text-ink">
+                          {formatScore(match.homeScore!, match.awayScore!)}
+                        </span>
+                      )}
+                    </div>
 
-                <MatchAdminForm
-                  matchId={match.id}
-                  homeTeamName={match.homeTeam.name}
-                  awayTeamName={match.awayTeam.name}
-                  homeScore={match.homeScore}
-                  awayScore={match.awayScore}
-                  locksAtLocal={toParisDateTimeLocal(match.locksAt)}
-                />
+                    <p className="mt-1 text-xs text-ink-faint">
+                      <span className="num">{match._count.predictions}</span>{' '}
+                      pronostic{match._count.predictions > 1 ? 's' : ''}
+                    </p>
+
+                    <MatchAdminForm
+                      matchId={match.id}
+                      homeTeamName={match.homeTeam.name}
+                      awayTeamName={match.awayTeam.name}
+                      homeScore={match.homeScore}
+                      awayScore={match.awayScore}
+                      locksAtLocal={toParisDateTimeLocal(match.locksAt)}
+                    />
+                  </div>
+                </Sheet>
               </li>
             )
           })}

@@ -19,13 +19,13 @@ function SubmitButton({ hasPrediction }: { hasPrediction: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-white transition-opacity disabled:opacity-60"
+      className="w-full rounded-md bg-court px-4 py-3 text-sm font-semibold tracking-wide text-white transition-opacity active:opacity-90 disabled:opacity-60"
     >
       {pending
         ? 'Enregistrement…'
         : hasPrediction
-          ? 'Modifier mon pronostic'
-          : 'Valider mon pronostic'}
+          ? 'Modifier le pronostic'
+          : 'Valider le pronostic'}
     </button>
   )
 }
@@ -43,7 +43,7 @@ function ScoreInput({
     <div className="flex-1">
       <label
         htmlFor={name}
-        className="mb-2 block truncate text-xs font-medium text-ink-soft"
+        className="mb-1.5 block truncate text-xs font-medium text-ink-soft"
       >
         {label}
       </label>
@@ -57,7 +57,7 @@ function ScoreInput({
         max={20}
         defaultValue={defaultValue}
         placeholder="0"
-        className="w-full rounded-xl border border-line bg-white px-4 py-3 text-center text-2xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+        className="num w-full rounded-md border border-line bg-shuttle px-3 py-2.5 text-center text-3xl font-semibold text-ink outline-none transition-colors placeholder:text-ink-faint focus-visible:border-court focus-visible:bg-sheet"
       />
     </div>
   )
@@ -80,16 +80,16 @@ export function PredictionForm({
   )
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-3.5">
       <input type="hidden" name="matchId" value={matchId} />
 
-      <div className="flex items-end gap-3">
+      <div className="flex items-end gap-2.5">
         <ScoreInput
           name="homeScore"
           label={homeTeamName}
           defaultValue={prediction?.homeScore}
         />
-        <span aria-hidden className="pb-3 text-lg font-bold text-ink-soft">
+        <span aria-hidden className="pb-3 text-lg text-ink-faint">
           –
         </span>
         <ScoreInput
@@ -113,7 +113,7 @@ export function PredictionForm({
 
       <SubmitButton hasPrediction={prediction !== null} />
 
-      <p className="text-center text-xs leading-relaxed text-ink-soft">
+      <p className="text-center text-xs text-ink-faint">
         Modifiable jusqu’à la fermeture des pronostics.
       </p>
     </form>

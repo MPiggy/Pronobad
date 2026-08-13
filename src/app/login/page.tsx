@@ -16,12 +16,10 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
-      <header className="mb-8 text-center">
-        <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-court text-3xl">
-          🏸
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">
-          Connexion à Pronobad
+      <header className="mb-8">
+        <p className="eyebrow mb-3">Pronobad</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          Connexion
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
           Entrez votre adresse e-mail pour recevoir un lien de connexion.

@@ -7,11 +7,9 @@ export const metadata: Metadata = {
 
 export default function AuthErrorPage() {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 text-center">
-      <div className="mb-5 text-4xl" aria-hidden="true">
-        ⏳
-      </div>
-      <h1 className="mb-3 text-2xl font-bold tracking-tight text-ink">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
+      <p className="eyebrow mb-3">Connexion</p>
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight text-ink">
         Ce lien n’est plus valide
       </h1>
       <p className="mb-8 text-sm leading-relaxed text-ink-soft">
@@ -20,7 +18,7 @@ export default function AuthErrorPage() {
       </p>
       <Link
         href="/login"
-        className="rounded-xl bg-court px-4 py-3 text-base font-semibold text-white"
+        className="flex w-full items-center justify-center rounded-md bg-court px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition-opacity active:opacity-90"
       >
         Demander un nouveau lien
       </Link>

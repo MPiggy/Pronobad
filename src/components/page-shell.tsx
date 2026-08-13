@@ -27,14 +27,14 @@ export async function PageShell({
 
   return (
     <>
-      <main className="mx-auto w-full max-w-md px-5 pt-[calc(1.5rem+var(--safe-top))]">
-        <header className="mb-6 flex items-start justify-between gap-3">
+      <main className="mx-auto w-full max-w-md px-4 pt-[calc(1.75rem+var(--safe-top))]">
+        <header className="mb-6 flex items-start justify-between gap-3 border-b border-line pb-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">
+            <h1 className="text-[1.75rem] font-semibold leading-none tracking-tight text-ink">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>
+              <p className="mt-2 text-sm text-ink-soft">{subtitle}</p>
             )}
           </div>
           {action}
@@ -48,23 +48,28 @@ export async function PageShell({
   )
 }
 
-/** Shown wherever a list has nothing in it — never leave a screen blank. */
+/**
+ * Shown wherever a list has nothing in it.
+ *
+ * An empty screen is an invitation to act, so the body says what will fill it
+ * or what to do next — never just "rien à afficher".
+ */
 export function EmptyState({
-  icon,
   title,
   body,
+  action,
 }: {
-  icon: string
   title: string
   body: string
+  action?: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center">
-      <span aria-hidden className="text-3xl">
-        {icon}
-      </span>
-      <p className="mt-3 font-medium text-ink">{title}</p>
-      <p className="mt-1 text-sm leading-relaxed text-ink-soft">{body}</p>
+    <div className="rounded-lg border border-dashed border-line bg-sheet px-5 py-10 text-center">
+      <p className="font-medium text-ink">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-[32ch] text-sm leading-relaxed text-ink-soft">
+        {body}
+      </p>
+      {action && <div className="mt-5">{action}</div>}
     </div>
   )
 }

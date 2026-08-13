@@ -52,8 +52,8 @@ function SubmitButton({
       disabled={pending}
       className={
         variant === 'primary'
-          ? 'w-full rounded-xl bg-court px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60'
-          : 'w-full rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium text-ink-soft transition-opacity disabled:opacity-60'
+          ? 'w-full rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white transition-opacity active:opacity-90 disabled:opacity-60'
+          : 'w-full rounded-md border border-line bg-sheet px-4 py-2.5 text-sm font-medium text-ink-soft transition-colors active:bg-shuttle disabled:opacity-60'
       }
     >
       {pending ? 'Enregistrement…' : children}
@@ -103,7 +103,7 @@ function ResultForm({
               min={0}
               max={20}
               defaultValue={field.value ?? undefined}
-              className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-center text-xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+              className="num w-full rounded-md border border-line bg-shuttle px-3 py-2 text-center text-2xl font-semibold text-ink outline-none transition-colors focus-visible:border-court focus-visible:bg-sheet"
             />
           </div>
         ))}
@@ -162,7 +162,7 @@ function LocksAtForm({
           type="datetime-local"
           required
           defaultValue={defaultValue}
-          className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+          className="w-full rounded-md border border-line bg-shuttle px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court focus-visible:bg-sheet"
         />
       </div>
 
@@ -192,9 +192,9 @@ export function MatchAdminForm({
   const hasResult = homeScore !== null && awayScore !== null
 
   return (
-    <details className="group mt-3 border-t border-line pt-3">
-      <summary className="cursor-pointer list-none text-sm font-medium text-court-dark marker:content-none">
-        <span className="group-open:hidden">Gérer cette rencontre</span>
+    <details className="group mt-3 border-t border-line-soft pt-2.5">
+      <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-wider text-court-dark marker:content-none">
+        <span className="group-open:hidden">Gérer</span>
         <span className="hidden group-open:inline">Fermer</span>
       </summary>
 

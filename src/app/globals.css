@@ -1,23 +1,41 @@
 @import 'tailwindcss';
 
 /*
- * Mobile-first design tokens.
- * Members open this on a phone, in a gym, on bad wifi — every value below
- * is chosen for that context first and scaled up for desktop after.
+ * Design language: the interclub match sheet.
+ *
+ * Fixtures are recorded on ruled paper — tabular, hairline-ruled, no ornament.
+ * The UI borrows that: white sheets on a warm ground, rules instead of shadows,
+ * and the scoreline carrying the typographic weight. Numerals are the display
+ * face of this app, which is why it needs no decorative one.
+ *
+ * Mobile-first throughout. Members open this on a phone, in a gym, on bad wifi.
  */
 @theme {
-  --color-court: oklch(0.55 0.15 155);
-  --color-court-dark: oklch(0.45 0.14 155);
-  --color-court-light: oklch(0.95 0.03 155);
+  /* Court green, reserved for one job: marking what still needs an action. */
+  --color-court: oklch(0.52 0.13 158);
+  --color-court-dark: oklch(0.42 0.12 158);
+  --color-court-light: oklch(0.96 0.025 158);
 
-  --color-shuttle: oklch(0.98 0.005 250);
-  --color-ink: oklch(0.22 0.02 250);
-  --color-ink-soft: oklch(0.48 0.02 250);
-  --color-line: oklch(0.9 0.01 250);
+  /* Warm paper ground, so white sheets read as sheets rather than as gaps. */
+  --color-shuttle: oklch(0.975 0.004 95);
+  --color-sheet: oklch(1 0 0);
 
-  --color-win: oklch(0.6 0.16 150);
-  --color-loss: oklch(0.6 0.19 25);
-  --color-pending: oklch(0.7 0.13 75);
+  --color-ink: oklch(0.24 0.012 260);
+  --color-ink-soft: oklch(0.52 0.014 260);
+  --color-ink-faint: oklch(0.68 0.012 260);
+
+  /* Two rule weights: hairline for inside a sheet, edge for its boundary. */
+  --color-line: oklch(0.92 0.006 260);
+  --color-line-soft: oklch(0.955 0.004 260);
+
+  /* Result states. Also drive the edge-markers that replaced status emoji. */
+  --color-win: oklch(0.58 0.15 152);
+  --color-loss: oklch(0.58 0.18 25);
+  --color-pending: oklch(0.72 0.12 78);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
 }
 
 :root {
@@ -34,9 +52,29 @@ html {
 body {
   background: var(--color-shuttle);
   color: var(--color-ink);
+  font-family: var(--font-sans);
   /* Room for the fixed bottom nav plus the iPhone home indicator. */
-  padding-bottom: calc(4rem + var(--safe-bottom));
+  padding-bottom: calc(4.25rem + var(--safe-bottom));
   overscroll-behavior-y: none;
+}
+
+/*
+ * Every number in this app is either a score or a rank, and both are read in
+ * columns. Lining tabular figures keep them aligned down a list; without this
+ * a "1" is narrower than a "6" and the column visibly wobbles.
+ */
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* Section eyebrow: small, spaced, quiet. Used to label a sheet, never to shout. */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
 }
 
 /* Touch targets: 44px minimum per Apple HIG, 48dp per Material. */
@@ -45,6 +83,16 @@ a[role='button'],
 input,
 select {
   min-height: 2.75rem;
+}
+
+/*
+ * One focus treatment everywhere, on the token color rather than the browser
+ * default, so keyboard users get a visible ring that matches the design.
+ */
+:where(a, button, input, select, summary):focus-visible {
+  outline: 2px solid var(--color-court);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

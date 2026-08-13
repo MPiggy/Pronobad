@@ -5,6 +5,7 @@ import { getCurrentSeason } from '@/lib/seasons'
 import { getClubMatchesForUser } from '@/lib/predictions/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { SectionHeading } from '@/components/sheet'
 import { MatchCard } from '@/components/match-card'
 
 export const metadata: Metadata = {
@@ -29,7 +30,6 @@ export default async function FixturesPage() {
     return (
       <PageShell title="Rencontres" subtitle={club?.name}>
         <EmptyState
-          icon="📅"
           title="Aucune saison ouverte"
           body="Aucune saison n’est encore configurée. Contactez l’administrateur de votre club."
         />
@@ -59,33 +59,25 @@ export default async function FixturesPage() {
     >
       {matches.length === 0 ? (
         <EmptyState
-          icon="🏸"
           title="Aucune rencontre"
           body="Les rencontres de votre club apparaîtront ici dès qu’elles auront été ajoutées."
         />
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-7">
           <section aria-labelledby="open-heading">
-            <div className="mb-3 flex items-baseline justify-between gap-2">
-              <h2
-                id="open-heading"
-                className="text-sm font-semibold uppercase tracking-wide text-ink-soft"
-              >
-                À venir
-              </h2>
-              {toPredict > 0 && (
-                <span className="text-xs font-medium text-court-dark">
-                  {toPredict} à pronostiquer
-                </span>
-              )}
-            </div>
+            <SectionHeading
+              id="open-heading"
+              aside={toPredict > 0 ? `${toPredict} à pronostiquer` : undefined}
+            >
+              À venir
+            </SectionHeading>
 
             {open.length === 0 ? (
-              <p className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink-soft">
+              <p className="rounded-lg border border-dashed border-line bg-sheet px-4 py-3.5 text-sm text-ink-soft">
                 Aucune rencontre ouverte aux pronostics pour le moment.
               </p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {open.map((match) => (
                   <MatchCard key={match.id} match={match} now={now} />
                 ))}
@@ -95,13 +87,8 @@ export default async function FixturesPage() {
 
           {closed.length > 0 && (
             <section aria-labelledby="past-heading">
-              <h2
-                id="past-heading"
-                className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft"
-              >
-                Terminées
-              </h2>
-              <ul className="space-y-3">
+              <SectionHeading id="past-heading">Terminées</SectionHeading>
+              <ul className="space-y-2.5">
                 {closed.map((match) => (
                   <MatchCard key={match.id} match={match} now={now} />
                 ))}

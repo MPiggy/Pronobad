@@ -11,7 +11,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-white transition-opacity disabled:opacity-60"
+      className="w-full rounded-md bg-court px-4 py-3.5 text-sm font-semibold tracking-wide text-white transition-opacity active:opacity-90 disabled:opacity-60"
     >
       {pending ? 'Enregistrement…' : 'Commencer'}
     </button>
@@ -44,7 +44,7 @@ export function OnboardingForm({
           defaultValue={defaultName}
           autoComplete="name"
           maxLength={60}
-          className="w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+          className="w-full rounded-md border border-line bg-sheet px-4 py-3 text-base text-ink outline-none transition-colors focus-visible:border-court"
         />
         <p className="mt-2 text-xs text-ink-soft">
           C’est ce nom qui apparaîtra au classement.
@@ -60,7 +60,7 @@ export function OnboardingForm({
           name="clubId"
           required
           defaultValue=""
-          className="w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+          className="w-full rounded-md border border-line bg-sheet px-4 py-3 text-base text-ink outline-none transition-colors focus-visible:border-court"
         >
           <option value="" disabled>
             Choisissez votre club…
