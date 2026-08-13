@@ -1,4 +1,14 @@
-export default function Home() {
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth/session'
+
+export default async function Home() {
+  // A signed-in member has no use for the pitch — send them to the fixtures,
+  // or to onboarding if they never picked a club.
+  const user = await getCurrentUser()
+
+  if (user) redirect(user.clubId ? '/fixtures' : '/onboarding')
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[calc(2rem+var(--safe-top))]">
       <header className="mb-10">
@@ -48,8 +58,14 @@ export default function Home() {
       </section>
 
       <div className="mt-auto pb-8">
-        <p className="rounded-xl border border-line bg-white px-4 py-3 text-center text-sm text-ink-soft">
-          Application en cours de construction.
+        <Link
+          href="/login"
+          className="flex w-full items-center justify-center rounded-xl bg-court px-4 py-3 text-base font-semibold text-white"
+        >
+          Se connecter
+        </Link>
+        <p className="mt-3 text-center text-xs text-ink-soft">
+          Connexion par lien e-mail, sans mot de passe.
         </p>
       </div>
     </main>

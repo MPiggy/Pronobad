@@ -16,13 +16,35 @@ Mobile-first: members open this on a phone, in a gym, on bad wifi.
 ## Requirements
 
 Node **22.12+** (Prisma 7 requires `^20.19 || ^22.12 || >=24`). The repo pins
-22.23.2 via `.nvmrc`, and `.npmrc` sets `engine-strict=true` so an older Node
-fails with a version error instead of an opaque `ERR_REQUIRE_ESM` from inside
-Prisma.
+22.23.2 via `.nvmrc`.
 
-Check with `node --version` before `npm install`. On Windows a system-wide Node
-in the machine `PATH` takes precedence over anything nvm sets, so `nvm use` can
-appear to work while `node` still resolves to the old version.
+Every script that touches Prisma runs `scripts/check-node.mjs` first, so an old
+Node stops with a one-line version error naming the offending binary, instead of
+an opaque `ERR_REQUIRE_ESM` from inside Prisma's bundled CommonJS. (`.npmrc` sets
+`engine-strict=true`, but that only covers `npm install` — not `npm run`, which
+is where this normally bites.)
+
+### If `nvm use` appears to do nothing
+
+On Windows the machine-level `PATH` is always searched **before** the user-level
+`PATH`. A system-wide Node installed outside nvm therefore shadows the version
+nvm selects: `nvm use` reports success, the nvm symlink updates correctly, and
+`node -v` still prints the old version.
+
+For the current shell, from the repo root:
+
+```powershell
+. .\scripts\use-node.ps1     # the leading dot is required
+```
+
+That puts the nvm-managed Node first and drops any other Node directory from
+`PATH` for the life of the shell. It needs no admin rights. To make it automatic,
+add the same line to your PowerShell profile (`$PROFILE`).
+
+To fix it permanently instead, remove the non-nvm Node directory from the
+machine `PATH` (**System Properties → Environment Variables → System
+variables**) and delete that stray install. This needs an administrator, and
+affects every project on the machine — not just this one.
 
 ## Local setup
 

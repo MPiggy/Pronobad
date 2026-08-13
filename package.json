@@ -6,18 +6,20 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
+    "preinstall": "node scripts/check-node.mjs",
+    "check:node": "node scripts/check-node.mjs",
+    "dev": "npm run check:node && next dev",
+    "build": "npm run check:node && prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:generate": "npm run check:node && prisma generate",
+    "db:migrate": "npm run check:node && prisma migrate dev",
+    "db:deploy": "npm run check:node && prisma migrate deploy",
+    "db:studio": "npm run check:node && prisma studio",
+    "db:seed": "npm run check:node && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

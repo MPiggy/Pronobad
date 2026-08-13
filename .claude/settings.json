@@ -7,7 +7,11 @@
       "Bash(npm view *)",
       "WebFetch(domain:www.prisma.io)",
       "PowerShell(nvm use 22.23.2)",
-      "PowerShell(nvm list)"
+      "PowerShell(nvm list)",
+      "Bash(git push *)",
+      "PowerShell(npm run lint 2>&1)",
+      "PowerShell(npm test 2>&1)",
+      "PowerShell(nvm list 2>&1)"
     ]
   }
 }
