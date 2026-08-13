@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { safeRedirectPath } from '@/lib/auth/redirect'
 import { getCurrentUser } from '@/lib/auth/session'
 import { siteUrl } from '@/lib/env'
@@ -7,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Lands the member after they click the magic link.
  *
- * Supabase redirects here with a one-time `code`, which is exchanged for a
+ * Supabase redirects here with a one-time credential, which is exchanged for a
  * session. The exchange must happen server-side — that is what sets the
  * httpOnly session cookies the rest of the app reads.
  */
@@ -20,7 +21,6 @@ export async function GET(request: NextRequest) {
   // construction.
   const origin = siteUrl()
 
-  const code = searchParams.get('code')
   const next = safeRedirectPath(searchParams.get('next'))
 
   // Supabase reports a rejected link (expired, already used) this way rather
@@ -31,12 +31,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/auth-error`)
   }
 
-  if (!code) {
+  // Two shapes arrive here, and which one depends on the email template.
+  //
+  //   - `token_hash` + `type` — what Supabase's default `{{ .ConfirmationURL }}`
+  //     template produces, by way of its /auth/v1/verify endpoint.
+  //   - `code` — the PKCE flow, used when the template points straight at this
+  //     callback.
+  //
+  // Handling only `code` silently breaks the default template: the link lands
+  // here with nothing to exchange and bounces to the error page, which reads to
+  // the member as the link doing nothing at all.
+  const code = searchParams.get('code')
+  const tokenHash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
+
+  if (!code && !tokenHash) {
     return NextResponse.redirect(`${origin}/auth/auth-error`)
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : await supabase.auth.verifyOtp({
+        // `magiclink` for an existing account, `signup` for a first login.
+        // Trusting the parameter keeps both working; a wrong value simply
+        // fails the verification rather than granting anything.
+        type: type ?? 'magiclink',
+        token_hash: tokenHash!,
+      })
 
   if (error) {
     return NextResponse.redirect(`${origin}/auth/auth-error`)
