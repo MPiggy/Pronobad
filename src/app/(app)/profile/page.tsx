@@ -30,9 +30,7 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  * rather than just a number.
  */
 export default async function ProfilePage() {
-  const user = await requireUser()
-
-  const season = await getCurrentSeason()
+  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
 
   if (!season) {
     return (

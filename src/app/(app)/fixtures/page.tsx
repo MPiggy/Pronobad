@@ -17,9 +17,7 @@ export const metadata: Metadata = {
  * action this app ever asks for is "predict the ones that are still open".
  */
 export default async function FixturesPage() {
-  const user = await requireUser()
-
-  const season = await getCurrentSeason()
+  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
 
   if (!season) {
     return (

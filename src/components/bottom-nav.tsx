@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
+import { Swords, Trophy, User, Settings, type LucideIcon } from 'lucide-react'
 
 /**
  * Fixed bottom navigation.
@@ -19,16 +20,16 @@ type NavItem = {
   // destination fails the build instead of shipping a dead tab.
   href: Route
   label: string
-  icon: string
+  icon: LucideIcon
 }
 
 const MEMBER_ITEMS: NavItem[] = [
-  { href: '/fixtures', label: 'Rencontres', icon: '🏸' },
-  { href: '/leaderboard', label: 'Classement', icon: '🏆' },
-  { href: '/profile', label: 'Profil', icon: '👤' },
+  { href: '/fixtures', label: 'Rencontres', icon: Swords },
+  { href: '/leaderboard', label: 'Classement', icon: Trophy },
+  { href: '/profile', label: 'Profil', icon: User },
 ]
 
-const ADMIN_ITEM: NavItem = { href: '/admin', label: 'Admin', icon: '⚙️' }
+const ADMIN_ITEM: NavItem = { href: '/admin', label: 'Admin', icon: Settings }
 
 export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname()
@@ -37,7 +38,7 @@ export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
   return (
     <nav
       aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-sheet/95 pb-[var(--safe-bottom)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-line/40 bg-shuttle/95 pb-[var(--safe-bottom)] backdrop-blur"
     >
       <ul className="mx-auto flex w-full max-w-md">
         {items.map((item) => {
@@ -45,6 +46,7 @@ export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
           // "Rencontres". Exact match alone would leave the bar blank there.
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const Icon = item.icon
 
           return (
             <li key={item.href} className="flex-1">
@@ -52,12 +54,14 @@ export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors ${
-                  isActive ? 'text-court-dark' : 'text-ink-soft'
+                  isActive ? 'text-court' : 'text-shuttle-text-soft'
                 }`}
               >
-                <span aria-hidden className="text-lg leading-none">
-                  {item.icon}
-                </span>
+                <Icon
+                  aria-hidden
+                  className="size-5"
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
                 {item.label}
               </Link>
             </li>

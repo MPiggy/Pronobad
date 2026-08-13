@@ -13,9 +13,7 @@ export const metadata: Metadata = {
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 
 export default async function LeaderboardPage() {
-  const user = await requireUser()
-
-  const season = await getCurrentSeason()
+  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
 
   if (!season) {
     return (

@@ -11,7 +11,11 @@
       "Bash(git push *)",
       "PowerShell(npm run lint 2>&1)",
       "PowerShell(npm test 2>&1)",
-      "PowerShell(nvm list 2>&1)"
+      "PowerShell(nvm list 2>&1)",
+      "PowerShell(. .\\\\scripts\\\\use-node.ps1)",
+      "PowerShell(npx --yes playwright install chromium 2>&1)",
+      "Bash(npx --yes playwright install chromium)",
+      "PowerShell(npx eslint src/components/bottom-nav.tsx)"
     ]
   }
 }
