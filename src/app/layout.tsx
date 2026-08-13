@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Members zoom to read scores — never disable it.
   maximumScale: 5,
-  themeColor: '#ffffff',
+  themeColor: '#ebeff9',
   viewportFit: 'cover',
 }
 

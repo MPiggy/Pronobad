@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 function Stat({ value, label }: { value: string | number; label: string }) {
   return (
-    <div className="flex-1 rounded-2xl border border-line bg-white px-3 py-4 text-center">
+    <div className="flex-1 rounded-2xl border border-line bg-sheet px-3 py-4 text-center">
       <p className="text-2xl font-bold tabular-nums text-ink">{value}</p>
       <p className="mt-1 text-xs leading-tight text-ink-soft">{label}</p>
     </div>
@@ -63,7 +63,7 @@ export default async function ProfilePage() {
         <form action="/auth/signout" method="post">
           <button
             type="submit"
-            className="shrink-0 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink-soft"
+            className="shrink-0 rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
           >
             Déconnexion
           </button>
@@ -102,7 +102,7 @@ export default async function ProfilePage() {
                   <li key={row.id}>
                     <Link
                       href={`/fixtures/${match.id}`}
-                      className="block rounded-2xl border border-line bg-white p-4 transition-colors active:bg-shuttle"
+                      className="block rounded-2xl border border-line bg-sheet p-4 transition-colors active:bg-shuttle"
                     >
                       <div className="mb-2 flex items-center justify-between gap-3">
                         <time

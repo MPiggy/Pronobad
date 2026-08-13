@@ -56,7 +56,7 @@ export function MatchCard({ match, now }: { match: MatchCardData; now: Date }) {
     <li>
       <Link
         href={`/fixtures/${match.id}`}
-        className="block rounded-2xl border border-line bg-white p-4 transition-colors active:bg-shuttle"
+        className="block rounded-2xl border border-line bg-sheet p-4 transition-colors active:bg-shuttle"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <time

@@ -41,7 +41,7 @@ function SubmitButton({ children }: { children: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white transition-opacity active:opacity-90 disabled:opacity-60"
+      className="w-full rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-ink transition-opacity active:opacity-90 disabled:opacity-60"
     >
       {pending ? 'Enregistrement…' : children}
     </button>

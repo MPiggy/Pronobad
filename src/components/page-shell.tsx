@@ -60,7 +60,7 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center">
+    <div className="rounded-2xl border border-line bg-sheet px-5 py-8 text-center">
       <span aria-hidden className="text-3xl">
         {icon}
       </span>

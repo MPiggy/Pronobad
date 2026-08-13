@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 /** Card container in the revamped visual style, local to this page. */
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-white">{children}</div>
+    <div className="rounded-2xl border border-line bg-sheet">{children}</div>
   )
 }
 

@@ -55,7 +55,7 @@ export default async function AdminPage() {
           action={
             <Link
               href="/admin/manage"
-              className="inline-block rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white"
+              className="inline-block rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-ink"
             >
               Créer une saison
             </Link>
@@ -115,7 +115,7 @@ export default async function AdminPage() {
             return (
               <li
                 key={match.id}
-                className="rounded-2xl border border-line bg-white p-4"
+                className="rounded-2xl border border-line bg-sheet p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <time

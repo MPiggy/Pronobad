@@ -37,7 +37,7 @@ export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
   return (
     <nav
       aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 pb-[var(--safe-bottom)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-sheet/95 pb-[var(--safe-bottom)] backdrop-blur"
     >
       <ul className="mx-auto flex w-full max-w-md">
         {items.map((item) => {

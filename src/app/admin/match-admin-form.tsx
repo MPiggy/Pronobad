@@ -52,8 +52,8 @@ function SubmitButton({
       disabled={pending}
       className={
         variant === 'primary'
-          ? 'w-full rounded-xl bg-court px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-60'
-          : 'w-full rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium text-ink-soft transition-opacity disabled:opacity-60'
+          ? 'w-full rounded-xl bg-court px-4 py-3 text-sm font-semibold text-ink transition-opacity disabled:opacity-60'
+          : 'w-full rounded-xl border border-line bg-sheet px-4 py-3 text-sm font-medium text-ink-soft transition-opacity disabled:opacity-60'
       }
     >
       {pending ? 'Enregistrement…' : children}
@@ -103,7 +103,7 @@ function ResultForm({
               min={0}
               max={20}
               defaultValue={field.value ?? undefined}
-              className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-center text-xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+              className="w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-center text-xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
             />
           </div>
         ))}
@@ -162,7 +162,7 @@ function LocksAtForm({
           type="datetime-local"
           required
           defaultValue={defaultValue}
-          className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+          className="w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
         />
       </div>
 

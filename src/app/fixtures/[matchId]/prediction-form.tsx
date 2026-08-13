@@ -19,7 +19,7 @@ function SubmitButton({ hasPrediction }: { hasPrediction: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-white transition-opacity disabled:opacity-60"
+      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-ink transition-opacity disabled:opacity-60"
     >
       {pending
         ? 'Enregistrement…'
@@ -57,7 +57,7 @@ function ScoreInput({
         max={20}
         defaultValue={defaultValue}
         placeholder="0"
-        className="w-full rounded-xl border border-line bg-white px-4 py-3 text-center text-2xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+        className="w-full rounded-xl border border-line bg-sheet px-4 py-3 text-center text-2xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
       />
     </div>
   )

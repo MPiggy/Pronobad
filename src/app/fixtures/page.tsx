@@ -73,7 +73,7 @@ export default async function FixturesPage() {
             </div>
 
             {open.length === 0 ? (
-              <p className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink-soft">
+              <p className="rounded-2xl border border-line bg-sheet px-4 py-3 text-sm text-ink-soft">
                 Aucune rencontre ouverte aux pronostics pour le moment.
               </p>
             ) : (

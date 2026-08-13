@@ -20,7 +20,7 @@ export default function AuthErrorPage() {
       </p>
       <Link
         href="/login"
-        className="rounded-xl bg-court px-4 py-3 text-base font-semibold text-white"
+        className="rounded-xl bg-court px-4 py-3 text-base font-semibold text-ink"
       >
         Demander un nouveau lien
       </Link>

@@ -59,7 +59,7 @@ export default async function Home() {
       <div className="mt-auto pb-8">
         <Link
           href="/login"
-          className="flex w-full items-center justify-center rounded-xl bg-court px-4 py-3 text-base font-semibold text-white"
+          className="flex w-full items-center justify-center rounded-xl bg-court px-4 py-3 text-base font-semibold text-ink"
         >
           Se connecter
         </Link>

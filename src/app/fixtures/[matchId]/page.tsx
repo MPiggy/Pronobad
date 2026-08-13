@@ -47,14 +47,14 @@ export default async function MatchPage({
       action={
         <Link
           href="/fixtures"
-          className="shrink-0 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink-soft"
+          className="shrink-0 rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
         >
           Retour
         </Link>
       }
     >
       <div className="space-y-5">
-        <section className="rounded-2xl border border-line bg-white p-5">
+        <section className="rounded-2xl border border-line bg-sheet p-5">
           <div className="space-y-3">
             {[
               { name: match.homeTeam.name, division: match.homeTeam.division, score: match.homeScore },
@@ -81,7 +81,7 @@ export default async function MatchPage({
         </section>
 
         {prediction && (
-          <section className="rounded-2xl border border-line bg-white p-5">
+          <section className="rounded-2xl border border-line bg-sheet p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
               Votre pronostic
             </h2>
@@ -100,12 +100,12 @@ export default async function MatchPage({
         )}
 
         {state.locked ? (
-          <p className="rounded-2xl border border-line bg-white px-4 py-3 text-sm leading-relaxed text-ink-soft">
+          <p className="rounded-2xl border border-line bg-sheet px-4 py-3 text-sm leading-relaxed text-ink-soft">
             {explainLock(state)}
             {!prediction && ' Vous n’aviez pas pronostiqué cette rencontre.'}
           </p>
         ) : (
-          <section className="rounded-2xl border border-line bg-white p-5">
+          <section className="rounded-2xl border border-line bg-sheet p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-ink-soft">
               {prediction ? 'Modifier votre pronostic' : 'Votre pronostic'}
             </h2>

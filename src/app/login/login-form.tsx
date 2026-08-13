@@ -17,7 +17,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-white transition-opacity disabled:opacity-60"
+      className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-ink transition-opacity disabled:opacity-60"
     >
       {pending ? pendingLabel : label}
     </button>
@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next: string }) {
         // Announced to screen readers: the page does not navigate, so without
         // this the confirmation is silent for anyone not looking at the screen.
         role="status"
-        className="rounded-xl border border-line bg-white p-5 text-center"
+        className="rounded-xl border border-line bg-sheet p-5 text-center"
       >
         <div className="mb-3 text-3xl" aria-hidden="true">
           📬
@@ -74,7 +74,7 @@ export function LoginForm({ next }: { next: string }) {
           placeholder="vous@club.fr"
           aria-describedby={state.status === 'error' ? 'email-error' : undefined}
           aria-invalid={state.status === 'error'}
-          className="w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink outline-none placeholder:text-ink-soft/60 focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+          className="w-full rounded-xl border border-line bg-sheet px-4 py-3 text-base text-ink outline-none placeholder:text-ink-soft/60 focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
         />
       </div>
 

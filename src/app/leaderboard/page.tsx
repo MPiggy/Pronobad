@@ -50,7 +50,7 @@ export default async function LeaderboardPage() {
                 key={row.userId}
                 aria-current={isMe ? 'true' : undefined}
                 className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
-                  isMe ? 'border-court bg-court-light' : 'border-line bg-white'
+                  isMe ? 'border-court bg-court-light' : 'border-line bg-sheet'
                 }`}
               >
                 <span
@@ -86,7 +86,7 @@ export default async function LeaderboardPage() {
         </ol>
       )}
 
-      <p className="mt-6 rounded-xl border border-line bg-white px-4 py-3 text-xs leading-relaxed text-ink-soft">
+      <p className="mt-6 rounded-xl border border-line bg-sheet px-4 py-3 text-xs leading-relaxed text-ink-soft">
         Score exact : {formatPoints(3)}. Bon vainqueur : {formatPoints(1)}. Les
         points sont figés au moment de la saisie du résultat.
       </p>
