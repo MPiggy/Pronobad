@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import { getActor } from '@/lib/auth/guards'
 import { BottomNav } from '@/components/bottom-nav'
+import logo from '@/app/icon.png'
 
 /**
  * The frame every signed-in page renders inside: title block, content column,
@@ -28,13 +30,21 @@ export async function PageShell({
     <>
       <main className="mx-auto w-full max-w-md px-5 pt-[calc(1.5rem+var(--safe-top))]">
         <header className="mb-6 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>
-            )}
+          <div className="flex min-w-0 items-start gap-3">
+            <Image
+              src={logo}
+              alt=""
+              className="h-10 w-10 shrink-0 object-contain"
+              priority
+            />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-shuttle-text">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-1 text-sm text-shuttle-text-soft">{subtitle}</p>
+              )}
+            </div>
           </div>
           {action}
         </header>

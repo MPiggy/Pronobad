@@ -80,7 +80,7 @@ export default async function ProfilePage() {
         <section aria-labelledby="history-heading">
           <h2
             id="history-heading"
-            className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft"
+            className="mb-3 text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
           >
             Historique · {season.name}
           </h2>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: 'Pronobad',
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
   },
 }
 
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Members zoom to read scores — never disable it.
   maximumScale: 5,
-  themeColor: '#ebeff9',
+  themeColor: '#15202f',
   viewportFit: 'cover',
 }
 

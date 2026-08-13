@@ -5,15 +5,17 @@
  * Members open this on a phone, in a gym, on bad wifi — every value below
  * is chosen for that context first and scaled up for desktop after.
  *
- * Palette: warm gold accent on a cool paper background, taupe borders and
- * secondary text — a shuttlecock-cork-and-court warmth against a clean court floor.
+ * Palette: warm gold accent on a near-black court background, taupe borders,
+ * and light paper cards — the shuttlecock-and-cork warmth of night play.
  */
 @theme {
   --color-court: #f2c168;
   --color-court-dark: #8a6420;
   --color-court-light: #fbeed2;
 
-  --color-shuttle: #ebeff9;
+  --color-shuttle: #15202f;
+  --color-shuttle-text: #ebeff9;
+  --color-shuttle-text-soft: #a89a84;
   --color-ink: #15202f;
   --color-ink-soft: #736958;
   --color-line: #7c705e;
@@ -28,7 +30,7 @@
 :root {
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -38,7 +40,7 @@ html {
 
 body {
   background: var(--color-shuttle);
-  color: var(--color-ink);
+  color: var(--color-shuttle-text);
   /* Room for the fixed bottom nav plus the iPhone home indicator. */
   padding-bottom: calc(4rem + var(--safe-bottom));
   overscroll-behavior-y: none;

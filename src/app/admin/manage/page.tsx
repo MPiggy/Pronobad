@@ -27,8 +27,8 @@ function SectionHeading({
 }) {
   return (
     <div className="mb-2.5 flex items-baseline justify-between gap-3">
-      <h2 className="text-sm font-semibold text-ink">{children}</h2>
-      {aside && <p className="shrink-0 text-xs text-ink-soft">{aside}</p>}
+      <h2 className="text-sm font-semibold text-shuttle-text">{children}</h2>
+      {aside && <p className="shrink-0 text-xs text-shuttle-text-soft">{aside}</p>}
     </div>
   )
 }

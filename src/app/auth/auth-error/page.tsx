@@ -11,10 +11,10 @@ export default function AuthErrorPage() {
       <div className="mb-5 text-4xl" aria-hidden="true">
         ⏳
       </div>
-      <h1 className="mb-3 text-2xl font-bold tracking-tight text-ink">
+      <h1 className="mb-3 text-2xl font-bold tracking-tight text-shuttle-text">
         Ce lien n’est plus valide
       </h1>
-      <p className="mb-8 text-sm leading-relaxed text-ink-soft">
+      <p className="mb-8 text-sm leading-relaxed text-shuttle-text-soft">
         Les liens de connexion expirent au bout d’une heure et ne peuvent servir
         qu’une seule fois. Demandez-en un nouveau pour continuer.
       </p>

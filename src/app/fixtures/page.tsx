@@ -61,12 +61,12 @@ export default async function FixturesPage() {
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h2
                 id="open-heading"
-                className="text-sm font-semibold uppercase tracking-wide text-ink-soft"
+                className="text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
               >
                 À venir
               </h2>
               {toPredict > 0 && (
-                <span className="text-xs font-medium text-court-dark">
+                <span className="text-xs font-medium text-court">
                   {toPredict} à pronostiquer
                 </span>
               )}
@@ -89,7 +89,7 @@ export default async function FixturesPage() {
             <section aria-labelledby="past-heading">
               <h2
                 id="past-heading"
-                className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-soft"
+                className="mb-3 text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
               >
                 Terminées
               </h2>

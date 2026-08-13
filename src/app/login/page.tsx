@@ -22,10 +22,10 @@ export default async function LoginPage({
         <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-court text-3xl">
           🏸
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">
+        <h1 className="text-2xl font-bold tracking-tight text-shuttle-text">
           Connexion à Pronobad
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2 text-sm leading-relaxed text-shuttle-text-soft">
           {demo
             ? 'Entrez votre nom pour essayer l’application.'
             : 'Entrez votre adresse e-mail pour recevoir un lien de connexion.'}

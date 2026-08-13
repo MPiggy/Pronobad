@@ -94,7 +94,7 @@ export default async function AdminPage() {
       subtitle={`Toutes les rencontres · ${season.name}`}
     >
       {awaitingResult > 0 && (
-        <p className="mb-4 rounded-xl border border-pending/40 bg-pending/10 px-4 py-3 text-sm text-ink">
+        <p className="mb-4 rounded-xl border border-pending/40 bg-pending/10 px-4 py-3 text-sm text-shuttle-text">
           {awaitingResult} rencontre{awaitingResult > 1 ? 's' : ''} en attente de
           résultat.
         </p>

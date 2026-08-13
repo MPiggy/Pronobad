@@ -50,7 +50,7 @@ function SubmitButton({ children }: { children: string }) {
 
 const labelClass = 'mb-1.5 block text-xs font-medium text-ink-soft'
 const inputClass =
-  'w-full rounded-md border border-line bg-shuttle px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court focus-visible:bg-sheet'
+  'w-full rounded-md border border-line bg-sheet px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court'
 
 export function SeasonForm() {
   const [state, formAction] = useActionState<ManageState, FormData>(
