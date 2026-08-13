@@ -67,11 +67,7 @@ export async function GET(request: NextRequest) {
 
   // Create the `User` row now, while we are in a Route Handler that can write
   // cookies, rather than leaving the first Server Component render to do it.
-  const user = await getCurrentUser()
+  await getCurrentUser()
 
-  // A member with no club cannot predict anything yet, so onboarding takes
-  // priority over wherever they were originally headed.
-  const destination = user && !user.clubId ? '/onboarding' : next
-
-  return NextResponse.redirect(`${origin}${destination}`)
+  return NextResponse.redirect(`${origin}${next}`)
 }

@@ -3,25 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import {
-  ForbiddenError,
-  NotFoundError,
-  getActor,
-  requireClubAdmin,
-  requireSuperadmin,
-} from '@/lib/auth/guards'
-import { canImportFixtures } from '@/lib/auth/permissions'
+import { ForbiddenError, NotFoundError, requireSuperadmin } from '@/lib/auth/guards'
 import { getCurrentSeason } from '@/lib/seasons'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { Prisma } from '@/generated/prisma/client'
 
 /**
- * Structure mutations: seasons, clubs, teams, fixtures, and club-admin grants.
+ * Structure mutations: seasons, teams, and fixtures.
  *
  * Kept apart from `../actions.ts`, which handles the day-to-day of a season
  * already in place (results, deadlines). Everything here changes what exists
- * rather than what happened, and all but team/fixture creation is superadmin
- * territory (PLAN.md § Roles & Permissions).
+ * rather than what happened, and is superadmin-only.
  */
 
 export type ManageState =
@@ -52,7 +44,6 @@ function revalidateStructure() {
   revalidatePath('/admin/manage')
   revalidatePath('/fixtures')
   revalidatePath('/leaderboard')
-  revalidatePath('/onboarding')
 }
 
 // ---------------------------------------------------------------------------
@@ -137,64 +128,9 @@ export async function createSeason(
 }
 
 // ---------------------------------------------------------------------------
-// Clubs
-
-const clubSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, { message: 'Indiquez le nom du club (2 caractères minimum).' })
-    .max(80, { message: 'Ce nom est trop long (80 caractères maximum).' }),
-  region: z
-    .string()
-    .trim()
-    .max(80, { message: 'Cette région est trop longue (80 caractères maximum).' })
-    .optional(),
-})
-
-/** Creates a club. Superadmin only — clubs are the top of the structure. */
-export async function createClub(
-  _prevState: ManageState,
-  formData: FormData,
-): Promise<ManageState> {
-  const parsed = clubSchema.safeParse({
-    name: formData.get('name'),
-    region: formData.get('region') ?? undefined,
-  })
-
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Club invalide.',
-    }
-  }
-
-  const { name, region } = parsed.data
-
-  try {
-    await requireSuperadmin()
-
-    await db.club.create({
-      data: { name, region: region || null },
-    })
-
-    revalidateStructure()
-
-    return { status: 'saved', message: `Club « ${name} » créé.` }
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return { status: 'error', message: 'Un club porte déjà ce nom.' }
-    }
-
-    return toErrorState(error)
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Teams
 
 const teamSchema = z.object({
-  clubId: z.string().min(1, { message: 'Choisissez un club.' }),
   name: z
     .string()
     .trim()
@@ -207,19 +143,12 @@ const teamSchema = z.object({
     .max(60, { message: 'Cette division est trop longue (60 caractères maximum).' }),
 })
 
-/**
- * Creates a team in the current season.
- *
- * Open to the club's own admins, not just superadmins — registering your own
- * club's teams is the same routine work as importing its fixtures
- * (`canImportFixtures` in PLAN.md's permission table).
- */
+/** Creates a team in the current season. Superadmin only. */
 export async function createTeam(
   _prevState: ManageState,
   formData: FormData,
 ): Promise<ManageState> {
   const parsed = teamSchema.safeParse({
-    clubId: formData.get('clubId'),
     name: formData.get('name'),
     division: formData.get('division'),
   })
@@ -231,10 +160,10 @@ export async function createTeam(
     }
   }
 
-  const { clubId, name, division } = parsed.data
+  const { name, division } = parsed.data
 
   try {
-    await requireClubAdmin(clubId)
+    await requireSuperadmin()
 
     const season = await getCurrentSeason()
 
@@ -245,16 +174,8 @@ export async function createTeam(
       }
     }
 
-    // Checked rather than trusted — the id arrives from a form the caller
-    // controls, and a bad one would otherwise surface as a foreign-key error.
-    const club = await db.club.findUnique({ where: { id: clubId }, select: { name: true } })
-
-    if (!club) {
-      return { status: 'error', message: 'Ce club n’existe pas.' }
-    }
-
     await db.team.create({
-      data: { clubId, seasonId: season.id, name, division },
+      data: { seasonId: season.id, name, division },
     })
 
     revalidateStructure()
@@ -264,7 +185,7 @@ export async function createTeam(
     if (isUniqueViolation(error)) {
       return {
         status: 'error',
-        message: 'Ce club a déjà une équipe de ce nom cette saison.',
+        message: 'Une équipe de ce nom existe déjà cette saison.',
       }
     }
 
@@ -290,8 +211,7 @@ const matchSchema = z.object({
  * Creates a fixture between two teams of the current season.
  *
  * `locksAt` starts equal to `playedAt` — the PLAN.md default — and is then
- * adjustable per fixture from the main admin page. Allowed for an admin of
- * either club involved, same as the CSV-import rule it stands in for.
+ * adjustable per fixture from the main admin page. Superadmin only.
  */
 export async function createMatch(
   _prevState: ManageState,
@@ -327,7 +247,7 @@ export async function createMatch(
   }
 
   try {
-    const actor = await getActor()
+    const actor = await requireSuperadmin()
     const season = await getCurrentSeason()
 
     if (!season) {
@@ -336,7 +256,7 @@ export async function createMatch(
 
     const teams = await db.team.findMany({
       where: { id: { in: [homeTeamId, awayTeamId] } },
-      select: { id: true, clubId: true, seasonId: true },
+      select: { id: true, seasonId: true },
     })
 
     const home = teams.find((team) => team.id === homeTeamId)
@@ -350,19 +270,6 @@ export async function createMatch(
       return {
         status: 'error',
         message: 'Les deux équipes doivent appartenir à la saison en cours.',
-      }
-    }
-
-    // Same scope as a CSV import: an admin of either club may create the
-    // fixture, anyone else may not — whatever the form showed them.
-    if (
-      !canImportFixtures(actor, home.clubId) &&
-      !canImportFixtures(actor, away.clubId)
-    ) {
-      return {
-        status: 'error',
-        message:
-          'Seul un administrateur de l’un des deux clubs peut créer cette rencontre.',
       }
     }
 
@@ -404,153 +311,6 @@ export async function createMatch(
       }
     }
 
-    return toErrorState(error)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Club admins
-
-const grantSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.email({ message: 'Adresse e-mail invalide.' })),
-  clubId: z.string().min(1, { message: 'Choisissez un club.' }),
-})
-
-/**
- * Grants club-admin rights to an existing member.
- *
- * Superadmin only (PLAN.md: letting club admins promote admins would make the
- * permission set grow on its own). The member must have signed in at least
- * once — granting rights to an address nobody owns yet would hand them out to
- * whoever registers it later.
- */
-export async function grantClubAdmin(
-  _prevState: ManageState,
-  formData: FormData,
-): Promise<ManageState> {
-  const parsed = grantSchema.safeParse({
-    email: formData.get('email'),
-    clubId: formData.get('clubId'),
-  })
-
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Formulaire invalide.',
-    }
-  }
-
-  const { email, clubId } = parsed.data
-
-  try {
-    const actor = await requireSuperadmin()
-
-    const [user, club] = await Promise.all([
-      db.user.findUnique({ where: { email }, select: { id: true, name: true } }),
-      db.club.findUnique({ where: { id: clubId }, select: { id: true, name: true } }),
-    ])
-
-    if (!club) {
-      return { status: 'error', message: 'Ce club n’existe pas.' }
-    }
-
-    if (!user) {
-      return {
-        status: 'error',
-        message:
-          'Aucun membre avec cette adresse. La personne doit se connecter une première fois avant d’être promue.',
-      }
-    }
-
-    const existing = await db.clubAdmin.findUnique({
-      where: { userId_clubId: { userId: user.id, clubId } },
-    })
-
-    if (existing) {
-      return {
-        status: 'error',
-        message: `${user.name} administre déjà ${club.name}.`,
-      }
-    }
-
-    await db.clubAdmin.create({ data: { userId: user.id, clubId } })
-
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'ADMIN_GRANTED',
-        entity: 'ClubAdmin',
-        entityId: `${user.id}:${clubId}`,
-        after: { userId: user.id, email, clubId, clubName: club.name },
-      },
-    })
-
-    revalidateStructure()
-
-    return {
-      status: 'saved',
-      message: `${user.name} administre désormais ${club.name}.`,
-    }
-  } catch (error) {
-    return toErrorState(error)
-  }
-}
-
-const revokeSchema = z.object({
-  userId: z.string().min(1),
-  clubId: z.string().min(1),
-})
-
-/** Withdraws club-admin rights. Superadmin only, audited like the grant. */
-export async function revokeClubAdmin(
-  _prevState: ManageState,
-  formData: FormData,
-): Promise<ManageState> {
-  const parsed = revokeSchema.safeParse({
-    userId: formData.get('userId'),
-    clubId: formData.get('clubId'),
-  })
-
-  if (!parsed.success) {
-    return { status: 'error', message: 'Demande invalide.' }
-  }
-
-  const { userId, clubId } = parsed.data
-
-  try {
-    const actor = await requireSuperadmin()
-
-    const existing = await db.clubAdmin.findUnique({
-      where: { userId_clubId: { userId, clubId } },
-      select: { user: { select: { email: true, name: true } } },
-    })
-
-    if (!existing) {
-      return { status: 'error', message: 'Ce droit d’administration n’existe plus.' }
-    }
-
-    await db.clubAdmin.delete({
-      where: { userId_clubId: { userId, clubId } },
-    })
-
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'ADMIN_REVOKED',
-        entity: 'ClubAdmin',
-        entityId: `${userId}:${clubId}`,
-        before: { userId, email: existing.user.email, clubId },
-      },
-    })
-
-    revalidateStructure()
-
-    return { status: 'saved', message: `Droits de ${existing.user.name} retirés.` }
-  } catch (error) {
     return toErrorState(error)
   }
 }

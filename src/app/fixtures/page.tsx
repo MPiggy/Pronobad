@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
-import { requireOnboardedUser } from '@/lib/auth/session'
-import { db } from '@/lib/db'
+import { requireUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
-import { getClubMatchesForUser } from '@/lib/predictions/queries'
+import { getMatchesForUser } from '@/lib/predictions/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { MatchCard } from '@/components/match-card'
@@ -12,33 +11,29 @@ export const metadata: Metadata = {
 }
 
 /**
- * The member's home screen: their club's fixtures for the current season.
+ * The member's home screen: the fixtures for the current season.
  *
  * Open fixtures come first and past ones are pushed below, because the only
  * action this app ever asks for is "predict the ones that are still open".
  */
 export default async function FixturesPage() {
-  const user = await requireOnboardedUser()
+  const user = await requireUser()
 
-  const [club, season] = await Promise.all([
-    db.club.findUnique({ where: { id: user.clubId }, select: { name: true } }),
-    getCurrentSeason(),
-  ])
+  const season = await getCurrentSeason()
 
   if (!season) {
     return (
-      <PageShell title="Rencontres" subtitle={club?.name}>
+      <PageShell title="Rencontres">
         <EmptyState
           icon="📅"
           title="Aucune saison ouverte"
-          body="Aucune saison n’est encore configurée. Contactez l’administrateur de votre club."
+          body="Aucune saison n’est encore configurée. Contactez un administrateur."
         />
       </PageShell>
     )
   }
 
-  const matches = await getClubMatchesForUser({
-    clubId: user.clubId,
+  const matches = await getMatchesForUser({
     seasonId: season.id,
     userId: user.id,
   })
@@ -53,15 +48,12 @@ export default async function FixturesPage() {
   const toPredict = open.filter((match) => !match.prediction).length
 
   return (
-    <PageShell
-      title="Rencontres"
-      subtitle={`${club?.name ?? 'Votre club'} · ${season.name}`}
-    >
+    <PageShell title="Rencontres" subtitle={season.name}>
       {matches.length === 0 ? (
         <EmptyState
           icon="🏸"
           title="Aucune rencontre"
-          body="Les rencontres de votre club apparaîtront ici dès qu’elles auront été ajoutées."
+          body="Les rencontres apparaîtront ici dès qu’elles auront été ajoutées."
         />
       ) : (
         <div className="space-y-8">

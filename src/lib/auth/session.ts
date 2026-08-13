@@ -10,8 +10,8 @@ import type { User } from '@/generated/prisma/client'
  * The authenticated member's row in our own `User` table.
  *
  * Supabase owns identity (`auth.users`); we own everything domain-related —
- * club membership, superadmin flag, predictions. `User.authId` is the join
- * between the two, and this module is the only place that crossing happens.
+ * superadmin flag, predictions. `User.authId` is the join between the two,
+ * and this module is the only place that crossing happens.
  */
 
 /**
@@ -130,18 +130,4 @@ export async function requireUser(): Promise<User> {
   if (!user) redirect('/login')
 
   return user
-}
-
-/**
- * The current member, once they have completed onboarding.
- *
- * Predictions are scoped to a club, so a member without one has nothing to do
- * in the app yet. Routes that assume a club use this instead of `requireUser`.
- */
-export async function requireOnboardedUser(): Promise<User & { clubId: string }> {
-  const user = await requireUser()
-
-  if (!user.clubId) redirect('/onboarding')
-
-  return { ...user, clubId: user.clubId }
 }

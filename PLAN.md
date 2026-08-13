@@ -2,7 +2,9 @@
 
 ## Concept
 
-Each club member predicts the results of their team's interclub fixtures. A points system ranks predictors over a season.
+Each member predicts the results of the club's interclub fixtures. A points system ranks predictors over a season.
+
+There is a single club, shared by all users — no multi-club/club-membership model.
 
 ---
 
@@ -43,21 +45,15 @@ Store the result as `home_score` / `away_score` (two integers), never as a `"5-3
 ### Season
 - `id`, `name`, `starts_at`, `ends_at`, `is_current`
 
-**Season is part of the model from day one, not a Phase 4 feature.** A `Team` changes division every season and a `User` can change club. Without `season_id` on Match / Team / Prediction from the start, the schema has to be rewritten later — 30 minutes now versus a painful migration.
-
-### Club
-- `id`, `name`, `region`
+**Season is part of the model from day one, not a Phase 4 feature.** A `Team` changes division every season. Without `season_id` on Match / Team / Prediction from the start, the schema has to be rewritten later — 30 minutes now versus a painful migration.
 
 ### Team
-- `id`, `club_id`, `season_id`, `division`, `name`
+- `id`, `season_id`, `division`, `name`
 
 ### User
-- `id`, `name`, `email`, `club_id`, `is_superadmin`
+- `id`, `name`, `email`, `is_superadmin`
 
-`club_id` is *membership* — the club whose fixtures this user predicts. Admin rights live in `ClubAdmin`, not here. See [Roles & Permissions](#roles--permissions).
-
-### ClubAdmin
-- `user_id`, `club_id` — one row per club administered
+`is_superadmin` is the only permission flag — see [Roles & Permissions](#roles--permissions).
 
 ### AuditLog
 - `id`, `user_id`, `action`, `entity`, `entity_id`, `before`, `after`, `created_at`
@@ -87,25 +83,11 @@ Locking must be enforced **server-side on write**, not just by hiding the form. 
 
 ## Roles & Permissions
 
-Two roles: **superadmin** (sees and does everything) and **club admin** (manages their own club's fixtures and results). Everyone else is a member.
-
-### Why a join table instead of a `role` enum
-
-`club_id` + `role: CLUB_ADMIN` encodes "admin of my own club", which breaks in two ordinary cases: someone administering two clubs, and someone changing club while silently keeping admin rights over the old one. The second one will happen eventually.
-
-So identity and permissions are separate:
-
-- `User.club_id` — which club you predict for (membership)
-- `ClubAdmin(user_id, club_id)` — which clubs you administer (permission)
-- `User.is_superadmin` — global override
-
-"Can this user enter results for club X" becomes a lookup rather than an inference from two fields that can drift apart. Costs about an hour up front.
+One role beyond ordinary members: **superadmin** (sees and does everything — enters results, edits `locks_at`, manages the season/team/fixture structure). There is no per-club admin tier, since there is only one club.
 
 ### Bootstrapping the first superadmin
 
 The first superadmin can't be created through the app — there's no admin to create them. Use a **seed script** (`prisma/seed.ts`) that promotes a hardcoded email, run once against production. It's auditable and lives in the repo, unlike a manual `UPDATE` in the Supabase console.
-
-Club admins are then created *by* the superadmin through the UI — a normal feature with no bootstrap problem.
 
 ### Server-side enforcement
 
@@ -113,10 +95,9 @@ Hiding the admin button is not access control; the API route is the boundary. Ev
 
 | Action | Allowed if |
 |---|---|
-| Enter/edit a fixture result | superadmin, **or** admin of the home or away club |
-| Edit `locks_at` | superadmin, **or** admin of the home or away club |
-| Create/edit fixtures, CSV import | superadmin, **or** admin of one of the clubs involved |
-| Promote a club admin | superadmin only |
+| Enter/edit a fixture result | superadmin |
+| Edit `locks_at` | superadmin |
+| Create/edit fixtures | superadmin |
 | Submit a prediction | any member, subject to `locks_at` |
 
 Without the result-entry check, any logged-in member can POST a result for any fixture and rewrite the leaderboard.
@@ -125,7 +106,7 @@ Without the result-entry check, any logged-in member can POST a result for any f
 
 ### Admins predicting on their own fixtures
 
-**Allowed.** A club admin can predict on fixtures they also enter results for. This is a friendly club app — everyone knows who the admin is, and social trust does the work that a technical control would do badly. The alternative (barring admins from predicting) punishes the people doing the unpaid work of running the thing.
+**Allowed.** A superadmin can predict on fixtures they also enter results for. This is a friendly club app — everyone knows who the admin is, and social trust does the work that a technical control would do badly. The alternative (barring admins from predicting) punishes the people doing the unpaid work of running the thing.
 
 Decided deliberately rather than discovered. If it ever becomes a problem, the cheap fix is already available: entering a result freezes that admin's own prediction for the fixture from further edits, which falls out of the existing `locks_at` logic. Not built for the MVP.
 
@@ -133,16 +114,12 @@ Decided deliberately rather than discovered. If it ever becomes a problem, the c
 
 ## MVP Features
 
-- Sign-up / login, club membership
-- List of upcoming fixtures for the user's team/club
+- Sign-up / login
+- List of upcoming fixtures for the season
 - Prediction entry before kickoff (server-enforced lock at `locks_at`)
 - Official result entry (admin)
 - Automatic points calculation (job on result entry)
-- **Predictor leaderboard per club/team**
-
-### On the global leaderboard
-
-Deliberately out of scope. Different clubs predict different fixtures — comparing someone who predicted 14 fixtures with someone who predicted 8 is meaningless. A global leaderboard needs normalisation (points per fixture predicted), which is a product decision, not a technical one. Revisit after the MVP.
+- **Predictor leaderboard**, one per season, shared by every user — there is a single club, so no per-club scoping or normalisation is needed.
 
 ---
 
@@ -150,13 +127,13 @@ Deliberately out of scope. Different clubs predict different fixtures — compar
 
 **Phase 0 — Framing (1 evening).** Most decisions are already made above. What's left: confirm the scoring scale and the fixture data source. Originally scoped at a week; that's oversized for a solo project once the decisions are written down.
 
-**Phase 1 — Foundation (1–2 wk).** Next.js + Prisma + Postgres + Supabase auth. Season/Club/Team/Match/User/ClubAdmin models. Seed script including the first superadmin. **CSV fixture import built here, not later** — test data has to be seeded anyway, so make the seed path the real import path.
+**Phase 1 — Foundation (1–2 wk).** Next.js + Prisma + Postgres + Supabase auth. Season/Team/Match/User models. Seed script including the first superadmin. **CSV fixture import built here, not later** — test data has to be seeded anyway, so make the seed path the real import path.
 
-**Phase 2 — Core (2–3 wk).** Prediction entry, server-side time lock, admin result entry, permission checks on every mutating route, `AuditLog` on result and `locks_at` changes, scoring engine writing to `PredictionScore`. Superadmin UI for promoting club admins.
+**Phase 2 — Core (2–3 wk).** Prediction entry, server-side time lock, admin result entry, permission checks on every mutating route, `AuditLog` on result and `locks_at` changes, scoring engine writing to `PredictionScore`.
 
-**Phase 3 — Leaderboards & UX (1–2 wk).** Per-club leaderboards, profile page, history, mobile responsive. **Pre-fixture reminder email lands at the end of this phase** — moved up from Phase 4, see risk below.
+**Phase 3 — Leaderboards & UX (1–2 wk).** Leaderboard, profile page, history, mobile responsive. **Pre-fixture reminder email lands at the end of this phase** — moved up from Phase 4, see risk below.
 
-**Phase 4 — Polish.** Richer notifications, admin roles, season rollover tooling.
+**Phase 4 — Polish.** Richer notifications, season rollover tooling.
 
 ---
 
@@ -172,5 +149,5 @@ Deliberately out of scope. Different clubs predict different fixtures — compar
 
 It isn't technical — it's adoption. If members don't predict, the app is empty and dead in three weeks. Two things are worth more than half of Phase 4:
 
-- **Frictionless onboarding** — magic link, no password, one-click club membership via an invite link.
+- **Frictionless onboarding** — magic link, no password, no membership step to complete before predicting.
 - **Pre-fixture reminder** — probably the single feature that decides whether the app lives or dies. Even a plain email is enough at first, which is why it moved into Phase 3.

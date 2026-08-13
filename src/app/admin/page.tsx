@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 import { requireUser } from '@/lib/auth/session'
 import { getActor } from '@/lib/auth/guards'
-import { isAnyClubAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
 import { isLocked } from '@/lib/predictions/locking'
@@ -20,11 +19,10 @@ export const metadata: Metadata = {
 }
 
 /**
- * Result entry for club admins.
+ * Result entry for admins.
  *
- * Lists only fixtures the caller may manage — their own clubs' — so the page
- * never offers an action that the server action would then refuse. The actions
- * re-check the same rule regardless; this is presentation, not enforcement.
+ * The actions re-check the same rule regardless; this page's gate is
+ * presentation, not enforcement.
  */
 export default async function AdminPage() {
   await requireUser()
@@ -32,20 +30,20 @@ export default async function AdminPage() {
 
   // Members have no business here. `forbidden()` renders a 403 rather than
   // redirecting, so the failure is visible instead of looking like a bad link.
-  if (!isAnyClubAdmin(actor)) forbidden()
+  if (!actor.isSuperadmin) forbidden()
 
   const season = await getCurrentSeason()
 
-  // Superadmins manage the structure itself — seasons, clubs, teams, fixtures,
-  // admin rights — from a dedicated page.
-  const manageLink = actor.isSuperadmin ? (
+  // Superadmins manage the structure itself — seasons, teams, fixtures — from
+  // a dedicated page.
+  const manageLink = (
     <Link
       href="/admin/manage"
       className="shrink-0 rounded-md border border-line bg-sheet px-3 py-2 text-xs font-semibold text-court-dark transition-colors active:bg-shuttle"
     >
       Structure
     </Link>
-  ) : undefined
+  )
 
   if (!season) {
     return (
@@ -55,14 +53,12 @@ export default async function AdminPage() {
           title="Aucune saison ouverte"
           body="Créez une saison pour pouvoir saisir des résultats."
           action={
-            actor.isSuperadmin ? (
-              <Link
-                href="/admin/manage"
-                className="inline-block rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white"
-              >
-                Créer une saison
-              </Link>
-            ) : undefined
+            <Link
+              href="/admin/manage"
+              className="inline-block rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              Créer une saison
+            </Link>
           }
         />
       </PageShell>
@@ -70,19 +66,7 @@ export default async function AdminPage() {
   }
 
   const matches = await db.match.findMany({
-    where: {
-      seasonId: season.id,
-      // Superadmins manage every fixture; club admins only those involving a
-      // club they administer, on either side.
-      ...(actor.isSuperadmin
-        ? {}
-        : {
-            OR: [
-              { homeTeam: { clubId: { in: [...actor.adminClubIds] } } },
-              { awayTeam: { clubId: { in: [...actor.adminClubIds] } } },
-            ],
-          }),
-    },
+    where: { seasonId: season.id },
     select: {
       id: true,
       playedAt: true,
@@ -107,11 +91,7 @@ export default async function AdminPage() {
     <PageShell
       title="Administration"
       action={manageLink}
-      subtitle={
-        actor.isSuperadmin
-          ? `Toutes les rencontres · ${season.name}`
-          : `Vos clubs · ${season.name}`
-      }
+      subtitle={`Toutes les rencontres · ${season.name}`}
     >
       {awaitingResult > 0 && (
         <p className="mb-4 rounded-xl border border-pending/40 bg-pending/10 px-4 py-3 text-sm text-ink">

@@ -2,24 +2,15 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import {
-  createClub,
-  createMatch,
-  createSeason,
-  createTeam,
-  grantClubAdmin,
-  revokeClubAdmin,
-  type ManageState,
-} from './actions'
+import { createMatch, createSeason, createTeam, type ManageState } from './actions'
 
 /**
- * Creation forms for the structure page: season, club, team, fixture, and
- * club-admin grants. One `useActionState` per form, so an error in one does
- * not clear or disturb the others.
+ * Creation forms for the structure page: season, team, fixture. One
+ * `useActionState` per form, so an error in one does not clear or disturb
+ * the others.
  */
 
-export type ClubOption = { id: string; name: string }
-export type TeamOption = { id: string; name: string; clubName: string }
+export type TeamOption = { id: string; name: string }
 
 const IDLE: ManageState = { status: 'idle' }
 
@@ -60,36 +51,6 @@ function SubmitButton({ children }: { children: string }) {
 const labelClass = 'mb-1.5 block text-xs font-medium text-ink-soft'
 const inputClass =
   'w-full rounded-md border border-line bg-shuttle px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court focus-visible:bg-sheet'
-
-function ClubSelect({
-  id,
-  name,
-  clubs,
-  label,
-}: {
-  id: string
-  name: string
-  clubs: ClubOption[]
-  label: string
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className={labelClass}>
-        {label}
-      </label>
-      <select id={id} name={name} required defaultValue="" className={inputClass}>
-        <option value="" disabled>
-          Choisir un club…
-        </option>
-        {clubs.map((club) => (
-          <option key={club.id} value={club.id}>
-            {club.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
 
 export function SeasonForm() {
   const [state, formAction] = useActionState<ManageState, FormData>(
@@ -146,48 +107,7 @@ export function SeasonForm() {
   )
 }
 
-export function ClubForm() {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    createClub,
-    IDLE,
-  )
-
-  return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label htmlFor="club-name" className={labelClass}>
-          Nom du club
-        </label>
-        <input
-          id="club-name"
-          name="name"
-          type="text"
-          required
-          placeholder="Badminton Club de Lyon"
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="club-region" className={labelClass}>
-          Région (facultatif)
-        </label>
-        <input
-          id="club-region"
-          name="region"
-          type="text"
-          placeholder="Auvergne-Rhône-Alpes"
-          className={inputClass}
-        />
-      </div>
-
-      <StateMessage state={state} />
-      <SubmitButton>Créer le club</SubmitButton>
-    </form>
-  )
-}
-
-export function TeamForm({ clubs }: { clubs: ClubOption[] }) {
+export function TeamForm() {
   const [state, formAction] = useActionState<ManageState, FormData>(
     createTeam,
     IDLE,
@@ -195,8 +115,6 @@ export function TeamForm({ clubs }: { clubs: ClubOption[] }) {
 
   return (
     <form action={formAction} className="space-y-3">
-      <ClubSelect id="team-club" name="clubId" clubs={clubs} label="Club" />
-
       <div>
         <label htmlFor="team-name" className={labelClass}>
           Nom de l’équipe
@@ -206,7 +124,7 @@ export function TeamForm({ clubs }: { clubs: ClubOption[] }) {
           name="name"
           type="text"
           required
-          placeholder="Badminton Club de Lyon 1"
+          placeholder="Lyon 1"
           className={inputClass}
         />
       </div>
@@ -315,73 +233,6 @@ export function MatchForm({ teams }: { teams: TeamOption[] }) {
 
       <StateMessage state={state} />
       <SubmitButton>Créer la rencontre</SubmitButton>
-    </form>
-  )
-}
-
-export function GrantAdminForm({ clubs }: { clubs: ClubOption[] }) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    grantClubAdmin,
-    IDLE,
-  )
-
-  return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label htmlFor="grant-email" className={labelClass}>
-          Adresse e-mail du membre
-        </label>
-        <input
-          id="grant-email"
-          name="email"
-          type="email"
-          required
-          autoComplete="off"
-          placeholder="membre@club.fr"
-          className={inputClass}
-        />
-      </div>
-
-      <ClubSelect
-        id="grant-club"
-        name="clubId"
-        clubs={clubs}
-        label="Club à administrer"
-      />
-
-      <StateMessage state={state} />
-      <SubmitButton>Nommer administrateur</SubmitButton>
-    </form>
-  )
-}
-
-export function RevokeAdminButton({
-  userId,
-  clubId,
-}: {
-  userId: string
-  clubId: string
-}) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    revokeClubAdmin,
-    IDLE,
-  )
-
-  return (
-    <form action={formAction} className="shrink-0 text-right">
-      <input type="hidden" name="userId" value={userId} />
-      <input type="hidden" name="clubId" value={clubId} />
-      <button
-        type="submit"
-        className="text-xs font-medium text-loss underline-offset-2 active:underline"
-      >
-        Retirer
-      </button>
-      {state.status === 'error' && (
-        <p role="alert" className="mt-1 text-xs text-loss">
-          {state.message}
-        </p>
-      )}
     </form>
   )
 }

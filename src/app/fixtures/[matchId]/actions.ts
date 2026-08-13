@@ -2,9 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { requireOnboardedUser } from '@/lib/auth/session'
+import { requireUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { canPredict } from '@/lib/auth/permissions'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 
 /**
@@ -12,9 +11,9 @@ import { explainLock, lockState } from '@/lib/predictions/locking'
  *
  * A server action is a public POST endpoint, not a private callback from the
  * page that rendered the form. So everything is re-established here — who the
- * caller is, whether the fixture concerns their club, and whether it is still
- * open — rather than trusted from the client. The form hiding itself after
- * lock is a courtesy; this function is the actual rule (PLAN.md § Locking).
+ * caller is and whether the fixture is still open — rather than trusted from
+ * the client. The form hiding itself after lock is a courtesy; this function
+ * is the actual rule (PLAN.md § Locking).
  */
 
 /**
@@ -46,7 +45,7 @@ export async function submitPrediction(
   _prevState: PredictionState,
   formData: FormData,
 ): Promise<PredictionState> {
-  const user = await requireOnboardedUser()
+  const user = await requireUser()
 
   const parsed = predictionSchema.safeParse({
     matchId: formData.get('matchId'),
@@ -63,10 +62,6 @@ export async function submitPrediction(
 
   const { matchId, homeScore, awayScore } = parsed.data
 
-  if (!canPredict({ id: user.id, isSuperadmin: user.isSuperadmin, clubId: user.clubId, adminClubIds: [] })) {
-    return { status: 'error', message: 'Rejoignez un club pour pronostiquer.' }
-  }
-
   const match = await db.match.findUnique({
     where: { id: matchId },
     select: {
@@ -74,25 +69,11 @@ export async function submitPrediction(
       seasonId: true,
       locksAt: true,
       resultEnteredAt: true,
-      homeTeam: { select: { clubId: true } },
-      awayTeam: { select: { clubId: true } },
     },
   })
 
   if (!match) {
     return { status: 'error', message: 'Cette rencontre n’existe pas.' }
-  }
-
-  // Members predict their own club's fixtures. Without this, a crafted matchId
-  // would let anyone submit predictions on any club's fixtures in the app.
-  const concernsUserClub =
-    match.homeTeam.clubId === user.clubId || match.awayTeam.clubId === user.clubId
-
-  if (!concernsUserClub) {
-    return {
-      status: 'error',
-      message: 'Cette rencontre ne concerne pas votre club.',
-    }
   }
 
   // The authoritative lock check. The clock is read here, at write time, so a

@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
-import { requireOnboardedUser } from '@/lib/auth/session'
-import { db } from '@/lib/db'
+import { requireUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
-import { getClubLeaderboard } from '@/lib/leaderboard/queries'
+import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { formatPoints } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 
@@ -14,16 +13,13 @@ export const metadata: Metadata = {
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 
 export default async function LeaderboardPage() {
-  const user = await requireOnboardedUser()
+  const user = await requireUser()
 
-  const [club, season] = await Promise.all([
-    db.club.findUnique({ where: { id: user.clubId }, select: { name: true } }),
-    getCurrentSeason(),
-  ])
+  const season = await getCurrentSeason()
 
   if (!season) {
     return (
-      <PageShell title="Classement" subtitle={club?.name}>
+      <PageShell title="Classement">
         <EmptyState
           icon="🏆"
           title="Aucune saison ouverte"
@@ -33,13 +29,10 @@ export default async function LeaderboardPage() {
     )
   }
 
-  const rows = await getClubLeaderboard({ clubId: user.clubId, seasonId: season.id })
+  const rows = await getLeaderboard({ seasonId: season.id })
 
   return (
-    <PageShell
-      title="Classement"
-      subtitle={`${club?.name ?? 'Votre club'} · ${season.name}`}
-    >
+    <PageShell title="Classement" subtitle={season.name}>
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"

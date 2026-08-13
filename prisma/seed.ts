@@ -11,8 +11,8 @@ import { PrismaClient } from '../src/generated/prisma/client'
  *    created through the app — there is no admin to create them (PLAN.md).
  *    Doing it here keeps the act in version control, unlike a manual UPDATE in
  *    the Supabase console.
- * 2. Create demo clubs, teams and fixtures, so a fresh local database is
- *    usable immediately. Skipped unless SEED_DEMO_DATA=true.
+ * 2. Create demo teams and fixtures, so a fresh local database is usable
+ *    immediately. Skipped unless SEED_DEMO_DATA=true.
  *
  * Idempotent throughout: running it twice must not duplicate anything, because
  * it will be run twice.
@@ -85,34 +85,17 @@ async function seedDemoData() {
     },
   })
 
-  const clubNames = [
-    'Badminton Club de Lyon',
-    'Volant Grenoblois',
-    'Saint-Étienne Badminton',
-  ]
-
-  const clubs = []
-  for (const name of clubNames) {
-    clubs.push(
-      await db.club.upsert({
-        where: { name },
-        update: {},
-        create: { name, region: 'Auvergne-Rhône-Alpes' },
-      }),
-    )
-  }
+  const teamNames = ['Lyon', 'Grenoble', 'Saint-Étienne']
 
   const teams = []
-  for (const club of clubs) {
-    const name = `${club.name} 1`
-
+  for (const name of teamNames) {
     teams.push(
       await db.team.upsert({
         where: {
-          clubId_seasonId_name: { clubId: club.id, seasonId: season.id, name },
+          seasonId_name: { seasonId: season.id, name },
         },
         update: {},
-        create: { name, division: 'Régionale 1', clubId: club.id, seasonId: season.id },
+        create: { name, division: 'Régionale 1', seasonId: season.id },
       }),
     )
   }
@@ -162,7 +145,7 @@ async function seedDemoData() {
   }
 
   console.log(
-    `✓ Demo data: ${clubs.length} clubs, ${teams.length} teams, ${fixtures.length} fixtures.`,
+    `✓ Demo data: ${teams.length} teams, ${fixtures.length} fixtures.`,
   )
 }
 

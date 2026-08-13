@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { requireOnboardedUser } from '@/lib/auth/session'
+import { requireUser } from '@/lib/auth/session'
 import { getMatchForUser } from '@/lib/predictions/queries'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
@@ -30,18 +30,11 @@ export default async function MatchPage({
   params: Promise<{ matchId: string }>
 }) {
   const { matchId } = await params
-  const user = await requireOnboardedUser()
+  const user = await requireUser()
 
   const match = await getMatchForUser({ matchId, userId: user.id })
 
   if (!match) notFound()
-
-  // A fixture between two other clubs is not this member's business — and
-  // treating it as missing avoids confirming which fixture ids exist.
-  const concernsUserClub =
-    match.homeTeam.clubId === user.clubId || match.awayTeam.clubId === user.clubId
-
-  if (!concernsUserClub) notFound()
 
   const state = lockState(match)
   const hasResult = match.homeScore !== null && match.awayScore !== null

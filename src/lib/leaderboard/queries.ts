@@ -7,30 +7,19 @@ import {
 } from '@/lib/leaderboard/ranking'
 
 /**
- * The per-club leaderboard for a season.
+ * The leaderboard for a season.
  *
  * Reads the frozen `PredictionScore` rows rather than recomputing points from
  * predictions and results (PLAN.md): the leaderboard must show what was
  * actually awarded, including for fixtures scored under an older scale.
- *
- * Scoped to one club — a global leaderboard is deliberately out of scope,
- * since members of different clubs predict different numbers of fixtures.
  */
-export async function getClubLeaderboard({
-  clubId,
+export async function getLeaderboard({
   seasonId,
 }: {
-  clubId: string
   seasonId: string
 }): Promise<RankedEntry[]> {
   const scores = await db.predictionScore.findMany({
-    where: {
-      seasonId,
-      // Current membership, not membership at the time of the prediction: a
-      // member who has left the club drops off their old club's table rather
-      // than lingering on a leaderboard they can no longer add to.
-      user: { clubId },
-    },
+    where: { seasonId },
     select: {
       userId: true,
       points: true,
@@ -41,8 +30,7 @@ export async function getClubLeaderboard({
 
   // Aggregated in application code rather than as a groupBy: the exact-score
   // count needs a conditional aggregate, which Prisma cannot express without
-  // dropping to raw SQL. A club is ~50 members and a season a few dozen
-  // fixtures, so this is a few hundred rows at most.
+  // dropping to raw SQL. A season is a few hundred rows at most.
   const totals = new Map<string, LeaderboardEntry>()
 
   for (const score of scores) {

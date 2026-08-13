@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { requireOnboardedUser } from '@/lib/auth/session'
-import { db } from '@/lib/db'
+import { requireUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getPredictionHistory } from '@/lib/predictions/queries'
-import { getClubLeaderboard } from '@/lib/leaderboard/queries'
+import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
@@ -31,12 +30,9 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  * rather than just a number.
  */
 export default async function ProfilePage() {
-  const user = await requireOnboardedUser()
+  const user = await requireUser()
 
-  const [club, season] = await Promise.all([
-    db.club.findUnique({ where: { id: user.clubId }, select: { name: true } }),
-    getCurrentSeason(),
-  ])
+  const season = await getCurrentSeason()
 
   if (!season) {
     return (
@@ -52,7 +48,7 @@ export default async function ProfilePage() {
 
   const [history, leaderboard] = await Promise.all([
     getPredictionHistory({ userId: user.id, seasonId: season.id }),
-    getClubLeaderboard({ clubId: user.clubId, seasonId: season.id }),
+    getLeaderboard({ seasonId: season.id }),
   ])
 
   const me = leaderboard.find((row) => row.userId === user.id)
@@ -62,7 +58,7 @@ export default async function ProfilePage() {
   return (
     <PageShell
       title="Profil"
-      subtitle={`${user.name} · ${club?.name ?? 'Votre club'}`}
+      subtitle={user.name}
       action={
         <form action="/auth/signout" method="post">
           <button

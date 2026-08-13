@@ -11,8 +11,8 @@ datasource db {
   provider = "postgresql"
 }
 
-/// A season scopes almost everything: teams change division, members change
-/// club, and leaderboards reset. Modelled from day one rather than retrofitted.
+/// A season scopes almost everything: teams change division, and
+/// leaderboards reset. Modelled from day one rather than retrofitted.
 model Season {
   id        String   @id @default(cuid())
   name      String
@@ -29,42 +29,21 @@ model Season {
   @@index([isCurrent])
 }
 
-model Club {
-  id     String  @id @default(cuid())
-  name   String
-  region String?
-
-  createdAt DateTime @default(now())
-
-  teams   Team[]
-  members User[]
-  admins  ClubAdmin[]
-
-  @@unique([name])
-}
-
 model Team {
   id       String @id @default(cuid())
   name     String
   division String
 
-  clubId   String
-  club     Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
   seasonId String
   season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
   homeMatches Match[] @relation("HomeTeam")
   awayMatches Match[] @relation("AwayTeam")
 
-  @@unique([clubId, seasonId, name])
+  @@unique([seasonId, name])
   @@index([seasonId])
-  @@index([clubId])
 }
 
-/// `clubId` is membership — the club whose fixtures this user predicts.
-/// Admin rights live in ClubAdmin, never here: a `role` enum would conflate
-/// "which club am I in" with "which clubs may I administer", and the two
-/// drift apart as soon as someone changes club or administers two.
 model User {
   id           String  @id @default(cuid())
   /// Supabase auth.users.id — the link between our tables and the auth system.
@@ -73,30 +52,12 @@ model User {
   name         String
   isSuperadmin Boolean @default(false)
 
-  clubId String?
-  club   Club?   @relation(fields: [clubId], references: [id], onDelete: SetNull)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  adminOf     ClubAdmin[]
   predictions Prediction[]
   scores      PredictionScore[]
   auditLogs   AuditLog[]
-
-  @@index([clubId])
-}
-
-/// One row per club administered. Superadmins bypass this table entirely.
-model ClubAdmin {
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clubId    String
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  grantedAt DateTime @default(now())
-
-  @@id([userId, clubId])
-  @@index([clubId])
 }
 
 enum MatchStatus {

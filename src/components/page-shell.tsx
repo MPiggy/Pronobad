@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { isAnyClubAdmin } from '@/lib/auth/permissions'
 import { getActor } from '@/lib/auth/guards'
 import { BottomNav } from '@/components/bottom-nav'
 
@@ -43,7 +42,7 @@ export async function PageShell({
         {children}
       </main>
 
-      <BottomNav showAdmin={isAnyClubAdmin(actor)} />
+      <BottomNav showAdmin={actor.isSuperadmin} />
     </>
   )
 }

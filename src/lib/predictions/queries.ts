@@ -10,17 +10,6 @@ import { db } from '@/lib/db'
  * they would leak before lock, and the leaderboard is the place they surface.
  */
 
-/** Fixtures involving either of a club's teams, in a season. */
-function clubMatchFilter(clubId: string, seasonId: string) {
-  return {
-    seasonId,
-    OR: [
-      { homeTeam: { clubId } },
-      { awayTeam: { clubId } },
-    ],
-  }
-}
-
 const matchWithPredictionSelect = (userId: string) =>
   ({
     id: true,
@@ -58,22 +47,20 @@ function withPrediction<
 }
 
 /**
- * Every fixture of the member's club this season, with their own prediction.
+ * Every fixture of the season, with the member's own prediction.
  *
  * Ordered by date ascending; the page splits them into upcoming and past
- * rather than running two queries, since a club's season is a few dozen rows.
+ * rather than running two queries, since a season is a few dozen rows.
  */
-export async function getClubMatchesForUser({
-  clubId,
+export async function getMatchesForUser({
   seasonId,
   userId,
 }: {
-  clubId: string
   seasonId: string
   userId: string
 }) {
   const matches = await db.match.findMany({
-    where: clubMatchFilter(clubId, seasonId),
+    where: { seasonId },
     select: matchWithPredictionSelect(userId),
     orderBy: { playedAt: 'asc' },
   })
@@ -81,7 +68,7 @@ export async function getClubMatchesForUser({
   return matches.map(withPrediction)
 }
 
-/** One fixture, with the caller's prediction and the clubs behind each team. */
+/** One fixture, with the caller's prediction. */
 export async function getMatchForUser({
   matchId,
   userId,
@@ -95,8 +82,8 @@ export async function getMatchForUser({
       ...matchWithPredictionSelect(userId),
       seasonId: true,
       round: true,
-      homeTeam: { select: { name: true, division: true, clubId: true } },
-      awayTeam: { select: { name: true, division: true, clubId: true } },
+      homeTeam: { select: { name: true, division: true } },
+      awayTeam: { select: { name: true, division: true } },
     },
   })
 

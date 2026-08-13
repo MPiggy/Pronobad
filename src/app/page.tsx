@@ -3,11 +3,10 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/session'
 
 export default async function Home() {
-  // A signed-in member has no use for the pitch — send them to the fixtures,
-  // or to onboarding if they never picked a club.
+  // A signed-in member has no use for the pitch — send them to the fixtures.
   const user = await getCurrentUser()
 
-  if (user) redirect(user.clubId ? '/fixtures' : '/onboarding')
+  if (user) redirect('/fixtures')
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[calc(2rem+var(--safe-top))]">

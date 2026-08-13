@@ -1,8 +1,9 @@
 # Pronobad
 
-Interclub badminton predictions. Club members predict the score of their team's
+Interclub badminton predictions. Members predict the score of the club's
 fixtures; points are awarded when the official result is entered, and a
-per-club leaderboard ranks predictors over the season.
+leaderboard ranks predictors over the season. There is a single club, shared
+by all users.
 
 See [PLAN.md](PLAN.md) for the design decisions and their reasoning.
 
@@ -110,14 +111,14 @@ npm run db:deploy
 ## Auth
 
 Magic link only — no passwords. Supabase owns identity (`auth.users`); this app
-owns club membership, the superadmin flag and predictions. `User.authId` joins
-the two, and `src/lib/auth/session.ts` is the only place that crossing happens.
+owns the superadmin flag and predictions. `User.authId` joins the two, and
+`src/lib/auth/session.ts` is the only place that crossing happens.
 
 | File | Role |
 |---|---|
 | `src/proxy.ts` | Refreshes the session on every request, redirects signed-out members to `/login` |
 | `src/lib/supabase/{client,server,proxy}.ts` | Supabase clients for browser, server render, and proxy |
-| `src/lib/auth/session.ts` | `getCurrentUser` / `requireUser` / `requireOnboardedUser` |
+| `src/lib/auth/session.ts` | `getCurrentUser` / `requireUser` |
 | `src/app/auth/callback/route.ts` | Exchanges the magic-link code for a session |
 
 A `User` row is created on first login rather than by a database trigger, so
@@ -140,27 +141,25 @@ tested, and they are far easier to test when answering "may this user do X" or
 
 | File | Role |
 |---|---|
-| `src/lib/auth/permissions.ts` | Pure rules — who may manage a fixture, import, promote admins |
+| `src/lib/auth/permissions.ts` | Pure rules — who may manage a fixture (superadmin only) |
 | `src/lib/auth/guards.ts` | Loads the actor, throws `ForbiddenError` / `NotFoundError` |
 | `src/lib/scoring/rules.ts` | 1 pt correct winner, 3 pts exact score — the 3 **replaces** the 1 |
 | `src/lib/scoring/engine.ts` | Freezes points into `PredictionScore`, in one transaction |
 | `src/lib/predictions/locking.ts` | Whether a fixture still accepts predictions |
 
-Three behaviours worth knowing:
+Two behaviours worth knowing:
 
 - **Scoring is idempotent.** An admin correcting a wrong result re-runs it, and
   the second run overwrites the first rather than double-counting.
 - **A fixture with a result is locked** even if `locksAt` is still in the
   future. `locksAt` is admin-editable, so without this, moving it backwards
   would reopen predictions on a scoreline everyone can already see.
-- **Membership never implies admin rights.** `ClubAdmin` is the only source, so
-  changing club cannot silently carry rights over.
 
 ## Seeding
 
 ```bash
 npm run db:seed                     # superadmin only
-SEED_DEMO_DATA=true npm run db:seed # + demo clubs, teams, fixtures
+SEED_DEMO_DATA=true npm run db:seed # + demo teams, fixtures
 ```
 
 Idempotent — safe to re-run. `SUPERADMIN_EMAIL` does not need an existing
