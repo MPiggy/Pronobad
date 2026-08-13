@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 import { requireUser } from '@/lib/auth/session'
 import { getActor } from '@/lib/auth/guards'
@@ -35,13 +36,34 @@ export default async function AdminPage() {
 
   const season = await getCurrentSeason()
 
+  // Superadmins manage the structure itself — seasons, clubs, teams, fixtures,
+  // admin rights — from a dedicated page.
+  const manageLink = actor.isSuperadmin ? (
+    <Link
+      href="/admin/manage"
+      className="shrink-0 rounded-md border border-line bg-sheet px-3 py-2 text-xs font-semibold text-court-dark transition-colors active:bg-shuttle"
+    >
+      Structure
+    </Link>
+  ) : undefined
+
   if (!season) {
     return (
-      <PageShell title="Administration">
+      <PageShell title="Administration" action={manageLink}>
         <EmptyState
           icon="⚙️"
           title="Aucune saison ouverte"
           body="Créez une saison pour pouvoir saisir des résultats."
+          action={
+            actor.isSuperadmin ? (
+              <Link
+                href="/admin/manage"
+                className="inline-block rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Créer une saison
+              </Link>
+            ) : undefined
+          }
         />
       </PageShell>
     )
@@ -84,6 +106,7 @@ export default async function AdminPage() {
   return (
     <PageShell
       title="Administration"
+      action={manageLink}
       subtitle={
         actor.isSuperadmin
           ? `Toutes les rencontres · ${season.name}`

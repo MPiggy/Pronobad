@@ -5,7 +5,7 @@ import { supabasePublishableKey, supabaseUrl } from '@/lib/env'
 /** Routes reachable without a session. Everything else requires one. */
 const PUBLIC_PATHS = ['/', '/login', '/auth']
 
-function isPublicPath(pathname: string): boolean {
+export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   )

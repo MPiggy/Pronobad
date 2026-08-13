@@ -53,10 +53,12 @@ export function EmptyState({
   icon,
   title,
   body,
+  action,
 }: {
   icon: string
   title: string
   body: string
+  action?: ReactNode
 }) {
   return (
     <div className="rounded-2xl border border-line bg-white px-5 py-8 text-center">
@@ -65,6 +67,7 @@ export function EmptyState({
       </span>
       <p className="mt-3 font-medium text-ink">{title}</p>
       <p className="mt-1 text-sm leading-relaxed text-ink-soft">{body}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/guards'
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
+import { parseParisDateTimeLocal } from '@/lib/format'
 import { MatchStatus } from '@/generated/prisma/enums'
 
 /**
@@ -192,46 +193,6 @@ const locksAtSchema = z.object({
 })
 
 /**
- * Parses a `datetime-local` value as a Paris wall-clock time.
- *
- * An admin typing 18:00 means 18:00 in the gym, not 18:00 UTC. Getting this
- * wrong shifts every lock by an hour or two — reopening predictions on
- * fixtures that should be closed.
- */
-function parseParisLocal(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
-  if (!match) return null
-
-  const [, year, month, day, hour, minute] = match.map(Number) as [
-    unknown, number, number, number, number, number,
-  ]
-
-  // Start from the naive UTC reading, then subtract Paris's offset at that
-  // moment — which is what turns the wall-clock time into a real instant
-  // across both CET and CEST.
-  const naive = Date.UTC(year, month - 1, day, hour, minute)
-  const offset = parisOffsetMs(new Date(naive))
-
-  return new Date(naive - offset)
-}
-
-/** Paris's UTC offset, in milliseconds, at a given instant. */
-function parisOffsetMs(at: Date): number {
-  // `sv-SE` formats as "YYYY-MM-DD HH:mm:ss", which Date.parse reads back.
-  const paris = new Date(
-    `${new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'Europe/Paris',
-      dateStyle: 'short',
-      timeStyle: 'medium',
-    })
-      .format(at)
-      .replace(' ', 'T')}Z`,
-  )
-
-  return paris.getTime() - at.getTime()
-}
-
-/**
  * Moves a fixture's prediction deadline.
  *
  * Audited with particular care: this is the one setting that can reopen a
@@ -254,7 +215,7 @@ export async function updateLocksAt(
     }
   }
 
-  const locksAt = parseParisLocal(parsed.data.locksAt)
+  const locksAt = parseParisDateTimeLocal(parsed.data.locksAt)
 
   if (!locksAt || Number.isNaN(locksAt.getTime())) {
     return { status: 'error', message: 'Date de fermeture invalide.' }

@@ -1,7 +1,9 @@
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
+import { DEMO_AUTH_ID, DEMO_COOKIE, DEMO_EMAIL, isDemoMode } from '@/lib/auth/demo'
 import type { User } from '@/generated/prisma/client'
 
 /**
@@ -47,6 +49,8 @@ export const getAuthUser = cache(async () => {
  * Returns `null` when signed out, so callers decide whether that is an error.
  */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
+  if (isDemoMode()) return await getDemoUser()
+
   const authUser = await getAuthUser()
   if (!authUser) return null
 
@@ -88,6 +92,30 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     },
   })
 })
+
+/**
+ * Demo mode: the cookie is the whole session.
+ *
+ * The login action already upserted the row with the chosen name; this only
+ * has to find it again — the create is a backstop for a wiped database with a
+ * stale cookie. Superadmin so every screen in the app can be shown.
+ */
+async function getDemoUser(): Promise<User | null> {
+  const store = await cookies()
+  const raw = store.get(DEMO_COOKIE)?.value
+  if (!raw) return null
+
+  return await db.user.upsert({
+    where: { email: DEMO_EMAIL },
+    update: {},
+    create: {
+      authId: DEMO_AUTH_ID,
+      email: DEMO_EMAIL,
+      name: decodeURIComponent(raw),
+      isSuperadmin: true,
+    },
+  })
+}
 
 /**
  * The current member, or a redirect to the login page.

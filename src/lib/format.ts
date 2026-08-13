@@ -90,6 +90,46 @@ export function toParisDateTimeLocal(date: Date): string {
   return localInputFormatter.format(date).replace(' ', 'T')
 }
 
+/**
+ * Parses a `datetime-local` value ("2026-11-15T18:00") as Paris wall-clock time.
+ *
+ * `datetime-local` posts no zone, and `new Date()` would read it in the
+ * server's zone — UTC on Vercel. An admin typing 18:00 means 18:00 in the gym,
+ * and getting this wrong shifts every deadline by an hour or two.
+ */
+export function parseParisDateTimeLocal(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
+  if (!match) return null
+
+  const [, year, month, day, hour, minute] = match.map(Number) as [
+    unknown, number, number, number, number, number,
+  ]
+
+  // Start from the naive UTC reading, then subtract Paris's offset at that
+  // moment — which is what turns the wall-clock time into a real instant
+  // across both CET and CEST.
+  const naive = Date.UTC(year, month - 1, day, hour, minute)
+  const offset = parisOffsetMs(new Date(naive))
+
+  return new Date(naive - offset)
+}
+
+/** Paris's UTC offset, in milliseconds, at a given instant. */
+function parisOffsetMs(at: Date): number {
+  // `sv-SE` formats as "YYYY-MM-DD HH:mm:ss", which Date.parse reads back.
+  const paris = new Date(
+    `${new Intl.DateTimeFormat('sv-SE', {
+      timeZone: TIME_ZONE,
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    })
+      .format(at)
+      .replace(' ', 'T')}Z`,
+  )
+
+  return paris.getTime() - at.getTime()
+}
+
 /** "5 - 3", with the non-breaking spaces that keep a score on one line. */
 export function formatScore(homeScore: number, awayScore: number): string {
   return `${homeScore} - ${awayScore}`

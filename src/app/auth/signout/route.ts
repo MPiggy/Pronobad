@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { siteUrl } from '@/lib/env'
+import { DEMO_COOKIE, isDemoMode } from '@/lib/auth/demo'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -9,6 +10,13 @@ import { createClient } from '@/lib/supabase/server'
  * pointing here, and browsers pre-fetching links would do it by accident.
  */
 export async function POST() {
+  if (isDemoMode()) {
+    const response = NextResponse.redirect(`${siteUrl()}/login`, { status: 303 })
+    response.cookies.delete(DEMO_COOKIE)
+
+    return response
+  }
+
   const supabase = await createClient()
 
   const {

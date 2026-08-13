@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { safeRedirectPath } from '@/lib/auth/redirect'
-import { LoginForm } from './login-form'
+import { isDemoMode } from '@/lib/auth/demo'
+import { DemoLoginForm, LoginForm } from './login-form'
 
 export const metadata: Metadata = {
   title: 'Connexion — Pronobad',
@@ -13,6 +14,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>
 }) {
   const { next } = await searchParams
+  const demo = isDemoMode()
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
@@ -24,11 +26,17 @@ export default async function LoginPage({
           Connexion à Pronobad
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          Entrez votre adresse e-mail pour recevoir un lien de connexion.
+          {demo
+            ? 'Entrez votre nom pour essayer l’application.'
+            : 'Entrez votre adresse e-mail pour recevoir un lien de connexion.'}
         </p>
       </header>
 
-      <LoginForm next={safeRedirectPath(next)} />
+      {demo ? (
+        <DemoLoginForm next={safeRedirectPath(next)} />
+      ) : (
+        <LoginForm next={safeRedirectPath(next)} />
+      )}
     </main>
   )
 }

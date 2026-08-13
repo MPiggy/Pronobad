@@ -2,9 +2,15 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { sendMagicLink, type LoginState } from './actions'
+import { demoLogin, sendMagicLink, type LoginState } from './actions'
 
-function SubmitButton() {
+function SubmitButton({
+  label = 'Recevoir mon lien',
+  pendingLabel = 'Envoi…',
+}: {
+  label?: string
+  pendingLabel?: string
+}) {
   const { pending } = useFormStatus()
 
   return (
@@ -13,7 +19,7 @@ function SubmitButton() {
       disabled={pending}
       className="w-full rounded-xl bg-court px-4 py-3 text-base font-semibold text-white transition-opacity disabled:opacity-60"
     >
-      {pending ? 'Envoi…' : 'Recevoir mon lien'}
+      {pending ? pendingLabel : label}
     </button>
   )
 }
@@ -82,6 +88,53 @@ export function LoginForm({ next }: { next: string }) {
 
       <p className="text-center text-xs leading-relaxed text-ink-soft">
         Pas de mot de passe : vous recevez un lien de connexion par e-mail.
+      </p>
+    </form>
+  )
+}
+
+/** Demo mode (MVP): a name is enough — no e-mail, no magic link. */
+export function DemoLoginForm({ next }: { next: string }) {
+  const [state, formAction] = useActionState<LoginState, FormData>(demoLogin, {
+    status: 'idle',
+  })
+
+  return (
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="next" value={next} />
+
+      <div>
+        <label
+          htmlFor="name"
+          className="mb-2 block text-sm font-medium text-ink"
+        >
+          Votre nom
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          autoComplete="name"
+          autoCapitalize="words"
+          spellCheck={false}
+          placeholder="Camille Dupont"
+          aria-describedby={state.status === 'error' ? 'name-error' : undefined}
+          aria-invalid={state.status === 'error'}
+          className="w-full rounded-md border border-line bg-sheet px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-faint focus-visible:border-court"
+        />
+      </div>
+
+      {state.status === 'error' && (
+        <p id="name-error" role="alert" className="text-sm text-loss">
+          {state.message}
+        </p>
+      )}
+
+      <SubmitButton label="Entrer" pendingLabel="Connexion…" />
+
+      <p className="text-center text-xs leading-relaxed text-ink-soft">
+        Version démo : entrez simplement un nom pour découvrir l’application.
       </p>
     </form>
   )
