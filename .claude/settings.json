@@ -23,7 +23,8 @@
       "PowerShell(npm run typecheck)",
       "PowerShell(npx tsc --noEmit)",
       "PowerShell(npx next typegen)",
-      "PowerShell(npx vitest run)"
+      "PowerShell(npx vitest run)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/home)"
     ]
   }
 }

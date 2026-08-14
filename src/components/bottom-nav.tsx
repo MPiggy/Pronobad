@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
-import { Home, Swords, Trophy, User, Settings, type LucideIcon } from 'lucide-react'
+import { Swords, Trophy, User, type LucideIcon } from 'lucide-react'
 
 /**
  * Fixed bottom navigation.
@@ -24,26 +24,20 @@ type NavItem = {
 }
 
 const LEFT_ITEMS: NavItem[] = [
-  { href: '/fixtures', label: 'Rencontres', icon: Swords },
-]
-
-const HOME_ITEM: NavItem = { href: '/home', label: 'Accueil', icon: Home }
-
-const RIGHT_ITEMS: NavItem[] = [
   { href: '/leaderboard', label: 'Classement', icon: Trophy },
-  { href: '/profile', label: 'Profil', icon: User },
 ]
 
-const ADMIN_ITEM: NavItem = { href: '/admin', label: 'Admin', icon: Settings }
+const CENTER_ITEM: NavItem = { href: '/fixtures', label: 'Rencontres', icon: Swords }
+
+const RIGHT_ITEMS: NavItem[] = [{ href: '/profile', label: 'Profil', icon: User }]
 
 function isItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
+export function BottomNav() {
   const pathname = usePathname()
-  const rightItems = showAdmin ? [...RIGHT_ITEMS, ADMIN_ITEM] : RIGHT_ITEMS
-  const homeActive = isItemActive(pathname, HOME_ITEM.href)
+  const centerActive = isItemActive(pathname, CENTER_ITEM.href)
 
   return (
     <nav
@@ -57,19 +51,19 @@ export function BottomNav({ showAdmin = false }: { showAdmin?: boolean }) {
 
         <li className="flex-1">
           <Link
-            href={HOME_ITEM.href}
-            aria-current={homeActive ? 'page' : undefined}
+            href={CENTER_ITEM.href}
+            aria-current={centerActive ? 'page' : undefined}
             className={`mx-auto -mt-4 flex size-16 flex-col items-center justify-center gap-0.5 rounded-full border-4 border-shuttle text-xs font-semibold shadow-lg transition-colors ${
-              homeActive
+              centerActive
                 ? 'bg-court text-ink shadow-court/30'
                 : 'bg-court/90 text-ink shadow-court/20'
             }`}
           >
-            <Home aria-hidden className="size-6" strokeWidth={homeActive ? 2.5 : 2} />
+            <Swords aria-hidden className="size-6" strokeWidth={centerActive ? 2.5 : 2} />
           </Link>
         </li>
 
-        {rightItems.map((item) => (
+        {RIGHT_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} active={isItemActive(pathname, item.href)} />
         ))}
       </ul>

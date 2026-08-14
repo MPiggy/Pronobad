@@ -37,3 +37,6 @@ next-env.d.ts
 
 # prisma — generated client, rebuilt by `prisma generate` on every build
 /src/generated
+
+# supabase email templates — pasted manually into the dashboard, not deployed from repo
+/supabase/templates/

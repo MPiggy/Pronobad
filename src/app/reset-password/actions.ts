@@ -45,5 +45,5 @@ export async function resetPassword(
     }
   }
 
-  redirect('/home')
+  redirect('/fixtures')
 }

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import Image from 'next/image'
 import { ToastProvider } from '@/components/toast'
+import backgroundImage from './background.png'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -28,6 +30,16 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="antialiased">
+        <Image
+          src={backgroundImage}
+          alt=""
+          fill
+          preload
+          placeholder="blur"
+          sizes="100vw"
+          className="fixed inset-0 -z-20 object-cover"
+        />
+        <div className="fixed inset-0 -z-10 bg-shuttle/70" />
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

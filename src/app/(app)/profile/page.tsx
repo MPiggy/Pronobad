@@ -71,14 +71,24 @@ async function ProfileContent() {
       title="Profil"
       subtitle={user.name}
       action={
-        <form action="/auth/signout" method="post">
-          <button
-            type="submit"
-            className="shrink-0 rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
-          >
-            Déconnexion
-          </button>
-        </form>
+        <div className="flex shrink-0 items-center gap-2">
+          {user.isSuperadmin && (
+            <Link
+              href="/admin"
+              className="rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
+            >
+              Admin
+            </Link>
+          )}
+          <form action="/auth/signout" method="post">
+            <button
+              type="submit"
+              className="rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
+            >
+              Déconnexion
+            </button>
+          </form>
+        </div>
       }
     >
       <div className="space-y-6">

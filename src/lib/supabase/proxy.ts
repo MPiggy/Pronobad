@@ -69,7 +69,7 @@ export async function updateSession(request: NextRequest) {
 
   if (claims && (pathname === '/login' || pathname === '/signup')) {
     const homeUrl = request.nextUrl.clone()
-    homeUrl.pathname = '/home'
+    homeUrl.pathname = '/fixtures'
     homeUrl.search = ''
 
     return NextResponse.redirect(homeUrl)

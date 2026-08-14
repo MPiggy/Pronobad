@@ -63,5 +63,5 @@ export async function completeOnboarding(
     data: { name, onboardedAt: new Date() },
   })
 
-  redirect('/home')
+  redirect('/fixtures')
 }

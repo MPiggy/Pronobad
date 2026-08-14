@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 /**
@@ -49,7 +50,7 @@ export function Modal({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4 ${
         closing ? 'animate-backdrop-out' : 'animate-backdrop-in'
@@ -85,6 +86,7 @@ export function Modal({
 
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -41,10 +41,7 @@ function ScoreInput({
 }) {
   return (
     <div className="flex-1">
-      <label
-        htmlFor={name}
-        className="mb-2 block truncate text-xs font-medium text-ink-soft"
-      >
+      <label htmlFor={name} className="sr-only">
         {label}
       </label>
       <input

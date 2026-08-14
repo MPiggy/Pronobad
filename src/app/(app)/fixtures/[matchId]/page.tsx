@@ -64,7 +64,7 @@ async function MatchContent({
       subtitle={`Journée ${match.round} · ${formatFullDate(match.playedAt)}`}
       action={
         <Link
-          href="/fixtures"
+          href="/home"
           className="shrink-0 rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
         >
           Retour

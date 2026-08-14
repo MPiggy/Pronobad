@@ -23,7 +23,7 @@ export default async function proxy(request: NextRequest) {
 
     if (hasSession && pathname === '/login') {
       const homeUrl = request.nextUrl.clone()
-      homeUrl.pathname = '/home'
+      homeUrl.pathname = '/fixtures'
       homeUrl.search = ''
 
       return NextResponse.redirect(homeUrl)

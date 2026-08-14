@@ -40,11 +40,11 @@ export function NextMatchHero({ match, now }: { match: MatchCardData; now: Date 
         </p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="min-w-0 flex-1 truncate text-lg font-bold text-shuttle-text">
+          <p className="min-w-0 flex-1 text-lg font-bold text-balance text-shuttle-text">
             {match.homeTeam.name}
           </p>
           <span className="shrink-0 text-sm font-semibold text-shuttle-text-soft">VS</span>
-          <p className="min-w-0 flex-1 truncate text-right text-lg font-bold text-shuttle-text">
+          <p className="min-w-0 flex-1 text-right text-lg font-bold text-balance text-shuttle-text">
             {match.awayTeam.name}
           </p>
         </div>

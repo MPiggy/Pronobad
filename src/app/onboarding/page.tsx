@@ -28,7 +28,7 @@ async function OnboardingContent() {
   const user = await requireUser()
 
   // Already set up — nothing left to do here.
-  if (user.onboardedAt) redirect('/home')
+  if (user.onboardedAt) redirect('/fixtures')
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
