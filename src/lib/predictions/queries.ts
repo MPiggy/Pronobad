@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/lib/db'
 
 /**
@@ -8,7 +9,16 @@ import { db } from '@/lib/db'
  * because `Prediction` is unique on (userId, matchId) and every query below
  * filters by user. Other members' predictions are deliberately never selected:
  * they would leak before lock, and the leaderboard is the place they surface.
+ *
+ * `userId` is always a plain argument (never read from `cookies()` in here),
+ * so it becomes part of the cache key below — each member gets their own
+ * cache entry, never someone else's.
  */
+
+/** Tag for every fixture list of a season — busted when any match in it changes. */
+export const matchesTag = (seasonId: string) => `matches-${seasonId}`
+/** Tag for a single fixture — busted on its own result/lock/prediction changes. */
+export const matchTag = (matchId: string) => `match-${matchId}`
 
 const matchWithPredictionSelect = (userId: string) =>
   ({
@@ -59,6 +69,10 @@ export async function getMatchesForUser({
   seasonId: string
   userId: string
 }) {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(matchesTag(seasonId))
+
   const matches = await db.match.findMany({
     where: { seasonId },
     select: matchWithPredictionSelect(userId),
@@ -76,6 +90,10 @@ export async function getMatchForUser({
   matchId: string
   userId: string
 }) {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(matchTag(matchId))
+
   const match = await db.match.findUnique({
     where: { id: matchId },
     select: {
@@ -105,6 +123,10 @@ export async function getPredictionHistory({
   userId: string
   seasonId: string
 }) {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(matchesTag(seasonId))
+
   return await db.prediction.findMany({
     where: { userId, seasonId },
     select: {

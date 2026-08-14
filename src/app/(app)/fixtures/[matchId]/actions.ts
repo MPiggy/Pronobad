@@ -1,10 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { updateTag } from 'next/cache'
 import { z } from 'zod'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { explainLock, lockState } from '@/lib/predictions/locking'
+import { matchesTag, matchTag } from '@/lib/predictions/queries'
 
 /**
  * Submitting or editing a prediction.
@@ -98,9 +99,9 @@ export async function submitPrediction(
     update: { homeScore, awayScore },
   })
 
-  // Both screens show the prediction back to the member.
-  revalidatePath('/fixtures')
-  revalidatePath(`/fixtures/${match.id}`)
+  // Both screens show the prediction back to the member immediately.
+  updateTag(matchesTag(match.seasonId))
+  updateTag(matchTag(match.id))
 
   return { status: 'saved' }
 }

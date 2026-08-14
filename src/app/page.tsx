@@ -1,10 +1,22 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/session'
 import logo from '@/app/icon.png'
 
-export default async function Home() {
+// Whether a visitor is signed in can only be known from the session cookie
+// at request time, so the whole pitch/redirect decision is runtime-bound —
+// Suspense here is what lets the route still prerender a shell around it.
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
+  )
+}
+
+async function HomeContent() {
   // A signed-in member has no use for the pitch — send them to the fixtures.
   const user = await getCurrentUser()
 

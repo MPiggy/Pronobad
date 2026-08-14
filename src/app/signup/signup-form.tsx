@@ -51,7 +51,7 @@ export function SignupForm() {
       <div>
         <label
           htmlFor="email"
-          className="mb-2 block text-sm font-medium text-ink"
+          className="mb-2 block text-sm font-medium text-shuttle-text"
         >
           Adresse e-mail
         </label>

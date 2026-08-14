@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Modal } from '@/components/modal'
+import { useToast } from '@/components/toast'
 import { MatchCard, type MatchCardData } from '@/components/match-card'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
@@ -15,6 +16,8 @@ import { PredictionForm } from './[matchId]/prediction-form'
  */
 export function MatchModalTrigger({ match, now }: { match: MatchCardData; now: Date }) {
   const [open, setOpen] = useState(false)
+  const [closeRequest, setCloseRequest] = useState(0)
+  const showToast = useToast()
   const state = lockState(match, now)
   const hasResult = match.homeScore !== null && match.awayScore !== null
   const { prediction } = match
@@ -29,6 +32,7 @@ export function MatchModalTrigger({ match, now }: { match: MatchCardData; now: D
         <Modal
           title={`${match.homeTeam.name} – ${match.awayTeam.name}`}
           onClose={() => setOpen(false)}
+          requestClose={closeRequest}
         >
           <div className="space-y-4">
             {hasResult && (
@@ -57,6 +61,10 @@ export function MatchModalTrigger({ match, now }: { match: MatchCardData; now: D
                 homeTeamName={match.homeTeam.name}
                 awayTeamName={match.awayTeam.name}
                 prediction={prediction}
+                onSaved={() => {
+                  showToast('Pronostic enregistré')
+                  setCloseRequest((count) => count + 1)
+                }}
               />
             )}
           </div>

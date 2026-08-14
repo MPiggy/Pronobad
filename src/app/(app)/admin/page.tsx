@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { forbidden } from 'next/navigation'
@@ -23,8 +24,19 @@ export const metadata: Metadata = {
  *
  * The actions re-check the same rule regardless; this page's gate is
  * presentation, not enforcement.
+ *
+ * The superadmin check reads the session cookie, so the whole page is
+ * runtime-bound — Suspense is what lets the route still prerender a shell.
  */
-export default async function AdminPage() {
+export default function AdminPage() {
+  return (
+    <Suspense>
+      <AdminContent />
+    </Suspense>
+  )
+}
+
+async function AdminContent() {
   await requireUser()
   const actor = await getActor()
 

@@ -3,7 +3,7 @@ import { forbidden } from 'next/navigation'
 import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { MatchForm, SeasonForm, TeamForm } from './manage-forms'
 
@@ -35,8 +35,19 @@ function SectionHeading({
 
 /**
  * Superadmin structure page: seasons, teams, fixtures.
+ *
+ * The superadmin check reads the session cookie, so the whole page is
+ * runtime-bound — Suspense is what lets the route still prerender a shell.
  */
-export default async function ManagePage() {
+export default function ManagePage() {
+  return (
+    <Suspense>
+      <ManageContent />
+    </Suspense>
+  )
+}
+
+async function ManageContent() {
   const actor = await getActor()
 
   if (!actor.isSuperadmin) forbidden()

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { safeRedirectPath } from '@/lib/auth/redirect'
@@ -8,10 +9,24 @@ export const metadata: Metadata = {
   title: 'Connexion — Betclichy',
 }
 
-export default async function LoginPage({
+// `searchParams` is only known at request time, so it's read inside a
+// Suspense-wrapped child to let the route still prerender a shell.
+export default function LoginPage({
   searchParams,
 }: {
   // Next 16: dynamic APIs are async.
+  searchParams: Promise<{ next?: string }>
+}) {
+  return (
+    <Suspense>
+      <LoginContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function LoginContent({
+  searchParams,
+}: {
   searchParams: Promise<{ next?: string }>
 }) {
   const { next } = await searchParams

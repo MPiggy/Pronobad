@@ -29,7 +29,7 @@ export function ResetPasswordForm() {
       <div>
         <label
           htmlFor="password"
-          className="mb-2 block text-sm font-medium text-ink"
+          className="mb-2 block text-sm font-medium text-shuttle-text"
         >
           Nouveau mot de passe
         </label>
@@ -44,7 +44,7 @@ export function ResetPasswordForm() {
           aria-invalid={state.status === 'error'}
           className="w-full rounded-xl border border-line bg-sheet px-4 py-3 text-base text-ink outline-none placeholder:text-ink-soft/60 focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
         />
-        <p className="mt-1 text-xs text-ink-soft">8 caractères minimum.</p>
+        <p className="mt-1 text-xs text-shuttle-text-soft">8 caractères minimum.</p>
       </div>
 
       {state.status === 'error' && (

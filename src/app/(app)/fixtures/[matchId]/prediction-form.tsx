@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { useFormStatus } from 'react-dom'
 import { submitPrediction, type PredictionState } from './actions'
 
@@ -68,16 +68,25 @@ export function PredictionForm({
   homeTeamName,
   awayTeamName,
   prediction,
+  onSaved,
 }: {
   matchId: string
   homeTeamName: string
   awayTeamName: string
   prediction: { homeScore: number; awayScore: number } | null
+  /** Called once, right after a submission lands as `saved`. */
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState<PredictionState, FormData>(
     submitPrediction,
     { status: 'idle' },
   )
+
+  useEffect(() => {
+    if (state.status === 'saved') onSaved?.()
+    // Only the transition into "saved" should fire this, not `onSaved` identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status])
 
   return (
     <form action={formAction} className="space-y-4">

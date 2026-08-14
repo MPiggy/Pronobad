@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -23,11 +24,27 @@ export const metadata: Metadata = {
 /**
  * One fixture: the result if it is in, the member's prediction, and the entry
  * form while the fixture is still open.
+ *
+ * `requireUser` reads the session cookie, and the fixture is fetched with the
+ * caller's own prediction attached, so the whole page is runtime-bound —
+ * Suspense is what lets the route still prerender a shell around it.
  */
-export default async function MatchPage({
+export default function MatchPage({
   params,
 }: {
   // Next 16: dynamic APIs are async.
+  params: Promise<{ matchId: string }>
+}) {
+  return (
+    <Suspense>
+      <MatchContent params={params} />
+    </Suspense>
+  )
+}
+
+async function MatchContent({
+  params,
+}: {
   params: Promise<{ matchId: string }>
 }) {
   const { matchId } = await params

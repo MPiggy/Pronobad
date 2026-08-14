@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/lib/db'
 import { ScoringRule } from '@/lib/scoring/rules'
 import {
@@ -5,6 +6,9 @@ import {
   type LeaderboardEntry,
   type RankedEntry,
 } from '@/lib/leaderboard/ranking'
+
+/** Tag for a season's leaderboard — busted whenever a result is entered/withdrawn. */
+export const leaderboardTag = (seasonId: string) => `leaderboard-${seasonId}`
 
 /**
  * The leaderboard for a season.
@@ -18,6 +22,10 @@ export async function getLeaderboard({
 }: {
   seasonId: string
 }): Promise<RankedEntry[]> {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(leaderboardTag(seasonId))
+
   const scores = await db.predictionScore.findMany({
     where: { seasonId },
     select: {

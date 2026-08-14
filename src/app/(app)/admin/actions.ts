@@ -1,11 +1,13 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/guards'
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
 import { parseParisDateTimeLocal } from '@/lib/format'
+import { matchesTag, matchTag } from '@/lib/predictions/queries'
+import { leaderboardTag } from '@/lib/leaderboard/queries'
 import { MatchStatus } from '@/generated/prisma/enums'
 
 /**
@@ -75,7 +77,7 @@ export async function enterResult(
 
     const before = await db.match.findUnique({
       where: { id: matchId },
-      select: { homeScore: true, awayScore: true, status: true },
+      select: { seasonId: true, homeScore: true, awayScore: true, status: true },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
@@ -109,10 +111,10 @@ export async function enterResult(
     })
 
     revalidatePath('/admin')
-    revalidatePath('/fixtures')
-    revalidatePath('/leaderboard')
     revalidatePath('/profile')
-    revalidatePath(`/fixtures/${matchId}`)
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(matchId))
+    updateTag(leaderboardTag(before.seasonId))
 
     return {
       status: 'saved',
@@ -144,7 +146,7 @@ export async function withdrawResult(
 
     const before = await db.match.findUnique({
       where: { id: matchId.data },
-      select: { homeScore: true, awayScore: true, status: true },
+      select: { seasonId: true, homeScore: true, awayScore: true, status: true },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
@@ -173,10 +175,10 @@ export async function withdrawResult(
     })
 
     revalidatePath('/admin')
-    revalidatePath('/fixtures')
-    revalidatePath('/leaderboard')
     revalidatePath('/profile')
-    revalidatePath(`/fixtures/${matchId.data}`)
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(matchId.data))
+    updateTag(leaderboardTag(before.seasonId))
 
     return { status: 'saved', message: 'Résultat retiré.' }
   } catch (error) {
@@ -226,7 +228,7 @@ export async function updateLocksAt(
 
     const before = await db.match.findUnique({
       where: { id: parsed.data.matchId },
-      select: { locksAt: true },
+      select: { seasonId: true, locksAt: true },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
@@ -248,8 +250,8 @@ export async function updateLocksAt(
     })
 
     revalidatePath('/admin')
-    revalidatePath('/fixtures')
-    revalidatePath(`/fixtures/${parsed.data.matchId}`)
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(parsed.data.matchId))
 
     return { status: 'saved', message: 'Fermeture des pronostics mise à jour.' }
   } catch (error) {

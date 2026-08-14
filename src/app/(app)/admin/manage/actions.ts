@@ -1,10 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ForbiddenError, NotFoundError, requireSuperadmin } from '@/lib/auth/guards'
-import { getCurrentSeason } from '@/lib/seasons'
+import { CURRENT_SEASON_TAG, getCurrentSeason } from '@/lib/seasons'
+import { matchesTag } from '@/lib/predictions/queries'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { Prisma } from '@/generated/prisma/client'
 
@@ -38,12 +39,10 @@ function isUniqueViolation(error: unknown): boolean {
   )
 }
 
-/** The pages whose content depends on the structure edited here. */
-function revalidateStructure() {
+/** The admin pages themselves aren't cached with `use cache`, so a path revalidation covers them. */
+function revalidateAdminPages() {
   revalidatePath('/admin')
   revalidatePath('/admin/manage')
-  revalidatePath('/fixtures')
-  revalidatePath('/leaderboard')
 }
 
 // ---------------------------------------------------------------------------
@@ -119,7 +118,8 @@ export async function createSeason(
       },
     })
 
-    revalidateStructure()
+    revalidateAdminPages()
+    updateTag(CURRENT_SEASON_TAG)
 
     return { status: 'saved', message: `Saison « ${name} » créée et activée.` }
   } catch (error) {
@@ -178,7 +178,7 @@ export async function createTeam(
       data: { seasonId: season.id, name, division },
     })
 
-    revalidateStructure()
+    revalidateAdminPages()
 
     return { status: 'saved', message: `Équipe « ${name} » créée (${season.name}).` }
   } catch (error) {
@@ -300,7 +300,8 @@ export async function createMatch(
       },
     })
 
-    revalidateStructure()
+    revalidateAdminPages()
+    updateTag(matchesTag(season.id))
 
     return { status: 'saved', message: 'Rencontre créée. Résultat et fermeture se gèrent depuis l’onglet Admin.' }
   } catch (error) {

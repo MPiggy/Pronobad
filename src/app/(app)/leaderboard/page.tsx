@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
@@ -12,8 +13,15 @@ export const metadata: Metadata = {
 /** Medals for the top three; everyone else gets their number. */
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 
+/**
+ * The season's leaderboard is the same for every viewer and comes entirely
+ * from cached queries — only "which row is me" needs the caller's identity.
+ * That single runtime read is isolated to `MyRow` below so the rest of the
+ * list can still prerender as a static shell instead of the whole page
+ * waiting on the session cookie.
+ */
 export default async function LeaderboardPage() {
-  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
+  const season = await getCurrentSeason()
 
   if (!season) {
     return (
@@ -40,49 +48,67 @@ export default async function LeaderboardPage() {
       ) : (
         <ol className="space-y-2">
           {rows.map((row) => {
-            const isMe = row.userId === user.id
             const medal = MEDALS[row.rank - 1]
 
             return (
-              <li
+              <Suspense
                 key={row.userId}
-                aria-current={isMe ? 'true' : undefined}
-                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
-                  isMe ? 'border-court bg-court-light' : 'border-line bg-sheet'
-                }`}
+                fallback={<Row row={row} medal={medal} isMe={false} />}
               >
-                <span
-                  className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-ink-soft"
-                  aria-label={`Position ${row.rank}`}
-                >
-                  {medal ?? row.rank}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-ink">
-                    {row.name}
-                    {isMe && (
-                      <span className="ml-1.5 text-xs font-normal text-court-dark">
-                        (vous)
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-ink-soft">
-                    {row.scoredCount} pronostic{row.scoredCount > 1 ? 's' : ''} ·{' '}
-                    {row.exactCount} score{row.exactCount > 1 ? 's' : ''} exact
-                    {row.exactCount > 1 ? 's' : ''}
-                  </p>
-                </div>
-
-                <span className="shrink-0 text-lg font-bold tabular-nums text-ink">
-                  {row.points}
-                  <span className="ml-1 text-xs font-normal text-ink-soft">pts</span>
-                </span>
-              </li>
+                <MyRow row={row} medal={medal} />
+              </Suspense>
             )
           })}
         </ol>
       )}
     </PageShell>
+  )
+}
+
+type Row = Awaited<ReturnType<typeof getLeaderboard>>[number]
+
+/** Resolves the caller's identity to know whether this row is theirs. */
+async function MyRow({ row, medal }: { row: Row; medal?: string }) {
+  const user = await requireUser()
+
+  return <Row row={row} medal={medal} isMe={row.userId === user.id} />
+}
+
+function Row({ row, medal, isMe }: { row: Row; medal?: string; isMe: boolean }) {
+  return (
+    <li
+      aria-current={isMe ? 'true' : undefined}
+      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+        isMe ? 'border-court bg-court-light' : 'border-line bg-sheet'
+      }`}
+    >
+      <span
+        className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-ink-soft"
+        aria-label={`Position ${row.rank}`}
+      >
+        {medal ?? row.rank}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-ink">
+          {row.name}
+          {isMe && (
+            <span className="ml-1.5 text-xs font-normal text-court-dark">
+              (vous)
+            </span>
+          )}
+        </p>
+        <p className="text-xs text-ink-soft">
+          {row.scoredCount} pronostic{row.scoredCount > 1 ? 's' : ''} ·{' '}
+          {row.exactCount} score{row.exactCount > 1 ? 's' : ''} exact
+          {row.exactCount > 1 ? 's' : ''}
+        </p>
+      </div>
+
+      <span className="shrink-0 text-lg font-bold tabular-nums text-ink">
+        {row.points}
+        <span className="ml-1 text-xs font-normal text-ink-soft">pts</span>
+      </span>
+    </li>
   )
 }

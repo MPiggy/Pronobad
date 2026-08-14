@@ -18,7 +18,9 @@
       "PowerShell(npx eslint src/components/bottom-nav.tsx)",
       "Bash(mkdir -p /c/pw-qa-scratch)",
       "Bash(echo '{\"name\":\"qa-scratch\",\"version\":\"1.0.0\",\"type\":\"module\",\"private\":true}')",
-      "Read(//c//**)"
+      "Read(//c//**)",
+      "PowerShell(npm run lint)",
+      "PowerShell(npm run typecheck)"
     ]
   }
 }

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/session'
@@ -28,8 +29,20 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  * The history exists to answer "why do I have this many points" — so each row
  * shows the prediction, the actual result and the rule that was applied,
  * rather than just a number.
+ *
+ * `requireUser` reads the session cookie, and every read below is scoped to
+ * that user, so the whole page is runtime-bound — Suspense is what lets the
+ * route still prerender a shell around it.
  */
-export default async function ProfilePage() {
+export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfileContent />
+    </Suspense>
+  )
+}
+
+async function ProfileContent() {
   const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
 
   if (!season) {

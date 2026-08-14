@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next: string }) {
       <div>
         <label
           htmlFor="email"
-          className="mb-2 block text-sm font-medium text-ink"
+          className="mb-2 block text-sm font-medium text-shuttle-text"
         >
           Adresse e-mail
         </label>
@@ -59,7 +59,7 @@ export function LoginForm({ next }: { next: string }) {
       <div>
         <label
           htmlFor="password"
-          className="mb-2 block text-sm font-medium text-ink"
+          className="mb-2 block text-sm font-medium text-shuttle-text"
         >
           Mot de passe
         </label>
@@ -99,7 +99,7 @@ export function DemoLoginForm({ next }: { next: string }) {
       <div>
         <label
           htmlFor="name"
-          className="mb-2 block text-sm font-medium text-ink"
+          className="mb-2 block text-sm font-medium text-shuttle-text"
         >
           Votre nom
         </label>
@@ -114,7 +114,7 @@ export function DemoLoginForm({ next }: { next: string }) {
           placeholder="Camille Dupont"
           aria-describedby={state.status === 'error' ? 'name-error' : undefined}
           aria-invalid={state.status === 'error'}
-          className="w-full rounded-md border border-line bg-sheet px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-faint focus-visible:border-court"
+          className="w-full rounded-md border border-line bg-sheet px-4 py-3 text-base text-ink outline-none transition-colors placeholder:text-ink-soft/60 focus-visible:border-court"
         />
       </div>
 

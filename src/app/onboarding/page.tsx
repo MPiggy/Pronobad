@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth/session'
@@ -11,8 +12,19 @@ export const metadata: Metadata = {
  * Second half of account creation: the address is verified (the member is
  * already signed in, or `requireUser` below sends them back to `/login`), so
  * this collects the password and pseudo that make the account usable.
+ *
+ * `requireUser` reads the session cookie, so the whole page is runtime-bound;
+ * Suspense is what lets it still prerender a shell rather than block.
  */
-export default async function OnboardingPage() {
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
+  )
+}
+
+async function OnboardingContent() {
   const user = await requireUser()
 
   // Already set up — nothing left to do here.
