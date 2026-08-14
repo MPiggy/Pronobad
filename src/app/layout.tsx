@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Pronobad',
+  title: 'BetClichy',
   description: 'Interclub badminton predictions for your club',
-  applicationName: 'Pronobad',
+  applicationName: 'BetClichy',
   appleWebApp: {
     capable: true,
-    title: 'Pronobad',
+    title: 'BetClichy',
     statusBarStyle: 'black-translucent',
   },
 }

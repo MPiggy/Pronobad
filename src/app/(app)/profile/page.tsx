@@ -9,7 +9,7 @@ import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 
 export const metadata: Metadata = {
-  title: 'Profil — Pronobad',
+  title: 'Profil — BetClichy',
 }
 
 function Stat({ value, label }: { value: string | number; label: string }) {

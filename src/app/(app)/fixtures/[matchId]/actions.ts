@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 
@@ -45,7 +45,7 @@ export async function submitPrediction(
   _prevState: PredictionState,
   formData: FormData,
 ): Promise<PredictionState> {
-  const user = await requireUser()
+  const user = await requireOnboardedUser()
 
   const parsed = predictionSchema.safeParse({
     matchId: formData.get('matchId'),

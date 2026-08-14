@@ -8,7 +8,7 @@ import { EmptyState, PageShell } from '@/components/page-shell'
 import { MatchForm, SeasonForm, TeamForm } from './manage-forms'
 
 export const metadata: Metadata = {
-  title: 'Structure — Pronobad',
+  title: 'Structure — BetClichy',
 }
 
 /** Card container in the revamped visual style, local to this page. */

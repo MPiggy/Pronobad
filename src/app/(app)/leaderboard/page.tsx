@@ -6,7 +6,7 @@ import { formatPoints } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 
 export const metadata: Metadata = {
-  title: 'Classement — Pronobad',
+  title: 'Classement — BetClichy',
 }
 
 /** Medals for the top three; everyone else gets their number. */

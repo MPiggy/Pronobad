@@ -15,7 +15,7 @@ import { EmptyState, PageShell } from '@/components/page-shell'
 import { MatchAdminForm } from './match-admin-form'
 
 export const metadata: Metadata = {
-  title: 'Administration — Pronobad',
+  title: 'Administration — BetClichy',
 }
 
 /**

@@ -54,9 +54,10 @@ export async function GET(request: NextRequest) {
   const { error } = code
     ? await supabase.auth.exchangeCodeForSession(code)
     : await supabase.auth.verifyOtp({
-        // `magiclink` for an existing account, `signup` for a first login.
-        // Trusting the parameter keeps both working; a wrong value simply
-        // fails the verification rather than granting anything.
+        // `magiclink`/`email` for sign-in and sign-up links, `recovery` for a
+        // password reset. Trusting the parameter keeps all three working; a
+        // wrong value simply fails the verification rather than granting
+        // anything.
         type: type ?? 'magiclink',
         token_hash: tokenHash!,
       })
@@ -65,9 +66,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/auth-error`)
   }
 
+  // A password-reset link: send them straight to choosing a new password,
+  // regardless of where `next` points.
+  if (type === 'recovery') {
+    return NextResponse.redirect(`${origin}/reset-password`)
+  }
+
   // Create the `User` row now, while we are in a Route Handler that can write
   // cookies, rather than leaving the first Server Component render to do it.
-  await getCurrentUser()
+  const user = await getCurrentUser()
+
+  // First time verifying this address: no password or pseudo yet, so land on
+  // onboarding instead of wherever `next` was pointing.
+  if (user && !user.onboardedAt) {
+    return NextResponse.redirect(`${origin}/onboarding`)
+  }
 
   return NextResponse.redirect(`${origin}${next}`)
 }

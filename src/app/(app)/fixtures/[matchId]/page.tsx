@@ -16,7 +16,7 @@ import { PageShell } from '@/components/page-shell'
 import { PredictionForm } from './prediction-form'
 
 export const metadata: Metadata = {
-  title: 'Rencontre — Pronobad',
+  title: 'Rencontre — Betclichy',
 }
 
 /**

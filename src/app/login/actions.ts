@@ -4,13 +4,12 @@ import type { Route } from 'next'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { siteUrl } from '@/lib/env'
 import { db } from '@/lib/db'
 import { safeRedirectPath } from '@/lib/auth/redirect'
 import { DEMO_AUTH_ID, DEMO_COOKIE, DEMO_EMAIL } from '@/lib/auth/demo'
 import { createClient } from '@/lib/supabase/server'
 
-const loginSchema = z.object({
+const credentialsSchema = z.object({
   // Trim and lowercase *before* validating: members paste addresses with a
   // trailing space, and zod's email check runs on the raw value, so validating
   // first would reject an address that normalises perfectly well.
@@ -19,6 +18,7 @@ const loginSchema = z.object({
     .trim()
     .toLowerCase()
     .pipe(z.email({ message: 'Adresse e-mail invalide.' })),
+  password: z.string().min(1, { message: 'Mot de passe requis.' }),
   next: z.string().nullish(),
 })
 
@@ -27,55 +27,47 @@ export type LoginState =
   | { status: 'sent'; email: string }
   | { status: 'error'; message: string }
 
-export async function sendMagicLink(
+/** Sign-in with an existing e-mail + password. */
+export async function login(
   _prevState: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  const parsed = loginSchema.safeParse({
+  const parsed = credentialsSchema.safeParse({
     email: formData.get('email'),
+    password: formData.get('password'),
     next: formData.get('next'),
   })
 
   if (!parsed.success) {
     return {
       status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Adresse e-mail invalide.',
+      message: parsed.error.issues[0]?.message ?? 'Identifiants invalides.',
     }
   }
 
-  const { email, next } = parsed.data
+  const { email, password, next } = parsed.data
   const supabase = await createClient()
 
-  const callback = new URL('/auth/callback', siteUrl())
-  callback.searchParams.set('next', safeRedirectPath(next))
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: callback.toString(),
-      // The club is small and closed; anyone with an invite link should be able
-      // to join without an admin creating the account first.
-      shouldCreateUser: true,
-    },
-  })
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    // Supabase rate-limits magic links per address. Surfacing that plainly
-    // beats a generic failure, since the member's fix is simply to wait.
     if (error.status === 429) {
       return {
         status: 'error',
-        message: 'Trop de demandes. Réessayez dans quelques minutes.',
+        message: 'Trop de tentatives. Réessayez dans quelques minutes.',
       }
     }
 
     return {
       status: 'error',
-      message: "Envoi impossible pour l'instant. Réessayez plus tard.",
+      message: 'E-mail ou mot de passe incorrect.',
     }
   }
 
-  return { status: 'sent', email }
+  // `safeRedirectPath` only ever returns an internal path, which is what the
+  // Route type is guarding for — the cast closes the gap typed routes cannot
+  // check on a runtime value.
+  redirect(safeRedirectPath(next) as Route)
 }
 
 const demoLoginSchema = z.object({

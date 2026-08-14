@@ -7,7 +7,7 @@ import { EmptyState, PageShell } from '@/components/page-shell'
 import { MatchCard } from '@/components/match-card'
 
 export const metadata: Metadata = {
-  title: 'Rencontres — Pronobad',
+  title: 'Rencontres — Betclichy',
 }
 
 /**

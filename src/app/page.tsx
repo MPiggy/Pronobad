@@ -15,10 +15,15 @@ export default async function Home() {
       <header className="mb-10">
         <Image src={logo} alt="" className="mb-6 h-12 w-12 object-contain" priority />
 
-        <h1 className="text-3xl font-bold tracking-tight text-shuttle-text">Pronobad</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-shuttle-text">BetClichy</h1>
         <p className="mt-2 text-base leading-relaxed text-shuttle-text-soft">
-          Pronostiquez les rencontres interclubs de votre club et grimpez au
-          classement de la saison.
+          À chaque journée, pronostiquez les résultats des rencontres
+          interclubs de chaque équipe et tentez de prendre la tête du
+          classement général du club ! 🏆
+        </p>
+        <p className="mt-2 text-base leading-relaxed text-shuttle-text-soft">
+          Qui sera le meilleur pronostiqueur à la fin de la saison ? À vous de
+          jouer 📈
         </p>
       </header>
 
@@ -30,18 +35,23 @@ export default async function Home() {
           {[
             {
               step: '1',
-              title: 'Pronostiquez',
-              body: 'Annoncez le score de la rencontre avant le coup d’envoi.',
+              title: 'Analysez 🔍',
+              body: 'Définissez les tendances !',
             },
             {
               step: '2',
-              title: 'Marquez des points',
-              body: 'Bon vainqueur : 1 point. Score exact : 3 points.',
+              title: 'Pronostiquez 📈',
+              body: 'Faites vos jeux ! Annoncez le score de la rencontre avant le coup d’envoi.',
             },
             {
               step: '3',
-              title: 'Grimpez au classement',
-              body: 'Suivez votre place dans le classement de votre club.',
+              title: 'Marquez des points 🎰',
+              body: '1 point pour chaque bon résultat, 3 points si score exact !',
+            },
+            {
+              step: '4',
+              title: 'Grimpez au classement 🏆',
+              body: 'Suivez votre évolution à chaque journée !',
             },
           ].map((item) => (
             <li key={item.step} className="flex gap-4">

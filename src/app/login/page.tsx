@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { safeRedirectPath } from '@/lib/auth/redirect'
 import { isDemoMode } from '@/lib/auth/demo'
 import { DemoLoginForm, LoginForm } from './login-form'
 
 export const metadata: Metadata = {
-  title: 'Connexion — Pronobad',
+  title: 'Connexion — Betclichy',
 }
 
 export default async function LoginPage({
@@ -23,19 +24,33 @@ export default async function LoginPage({
           🏸
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-shuttle-text">
-          Connexion à Pronobad
+          Connexion à Betclichy
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-shuttle-text-soft">
           {demo
             ? 'Entrez votre nom pour essayer l’application.'
-            : 'Entrez votre adresse e-mail pour recevoir un lien de connexion.'}
+            : 'Entrez votre e-mail et votre mot de passe.'}
         </p>
       </header>
 
       {demo ? (
         <DemoLoginForm next={safeRedirectPath(next)} />
       ) : (
-        <LoginForm next={safeRedirectPath(next)} />
+        <>
+          <LoginForm next={safeRedirectPath(next)} />
+
+          <div className="mt-6 flex flex-col items-center gap-2 text-sm">
+            <Link href="/forgot-password" className="text-ink-soft underline">
+              Mot de passe oublié ?
+            </Link>
+            <p className="text-ink-soft">
+              Pas encore de compte ?{' '}
+              <Link href="/signup" className="font-medium text-ink underline">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
+        </>
       )}
     </main>
   )

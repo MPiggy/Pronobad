@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { db } from '@/lib/db'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { canManageMatch, type Actor } from '@/lib/auth/permissions'
 
 /**
@@ -35,7 +35,7 @@ export class NotFoundError extends Error {
  * permissions costs a single query rather than one per check.
  */
 export const getActor = cache(async (): Promise<Actor> => {
-  const user = await requireUser()
+  const user = await requireOnboardedUser()
 
   return { id: user.id, isSuperadmin: user.isSuperadmin }
 })

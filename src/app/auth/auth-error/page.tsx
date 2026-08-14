@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Lien invalide — Pronobad',
+  title: 'Lien invalide — BetClichy',
 }
 
 export default function AuthErrorPage() {

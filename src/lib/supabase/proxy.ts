@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { supabasePublishableKey, supabaseUrl } from '@/lib/env'
 
 /** Routes reachable without a session. Everything else requires one. */
-const PUBLIC_PATHS = ['/', '/login', '/auth']
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/auth']
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (claims && pathname === '/login') {
+  if (claims && (pathname === '/login' || pathname === '/signup')) {
     const homeUrl = request.nextUrl.clone()
     homeUrl.pathname = '/fixtures'
     homeUrl.search = ''

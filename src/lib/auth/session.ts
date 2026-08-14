@@ -86,9 +86,11 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     create: {
       authId: authUser.id,
       email,
-      // A placeholder until onboarding collects a real name. Not left empty so
-      // that leaderboards always have something to render.
+      // A placeholder until onboarding collects a real pseudo. Not left empty
+      // so that leaderboards always have something to render.
       name: email.split('@')[0] ?? 'Membre',
+      // Left null: a freshly verified e-mail has no password yet. Onboarding
+      // sets this once the member picks a password and pseudo.
     },
   })
 })
@@ -128,6 +130,22 @@ export async function requireUser(): Promise<User> {
   const user = await getCurrentUser()
 
   if (!user) redirect('/login')
+
+  return user
+}
+
+/**
+ * The current member, redirecting to `/login` if signed out and `/onboarding`
+ * if signed in but without a password + pseudo yet.
+ *
+ * Use this instead of `requireUser` for any page outside the onboarding flow
+ * itself — it is the guarantee that a member who verified their e-mail but
+ * abandoned onboarding cannot reach the rest of the app half-set-up.
+ */
+export async function requireOnboardedUser(): Promise<User> {
+  const user = await requireUser()
+
+  if (!isDemoMode() && !user.onboardedAt) redirect('/onboarding')
 
   return user
 }

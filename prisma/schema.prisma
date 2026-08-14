@@ -52,6 +52,11 @@ model User {
   name         String
   isSuperadmin Boolean @default(false)
 
+  /// Set once the member has chosen a password and pseudo after verifying
+  /// their e-mail. Null gates them into onboarding instead of the app proper —
+  /// see requireOnboardedUser in src/lib/auth/session.ts.
+  onboardedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
