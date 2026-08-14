@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
 import { Suspense, type ReactNode } from 'react'
 import { EmptyState, PageShell } from '@/components/page-shell'
-import { MatchForm, SeasonForm, TeamForm } from './manage-forms'
+import { MatchForm, SeasonForm, TeamEditForm, TeamForm } from './manage-forms'
 
 export const metadata: Metadata = {
   title: 'Structure — BetClichy',
@@ -103,13 +103,18 @@ async function ManageContent() {
                   {teams.map((team) => (
                     <li key={team.id}>
                       <Card>
-                        <div className="flex items-baseline justify-between gap-3 px-4 py-3">
-                          <p className="min-w-0 truncate text-sm font-medium text-ink">
-                            {team.name}
-                          </p>
-                          <p className="shrink-0 text-xs text-ink-soft">
-                            {team.division}
-                          </p>
+                        <div className="px-4 py-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <p className="min-w-0 truncate text-sm font-medium text-ink">
+                              {team.name}
+                            </p>
+                            <p className="shrink-0 text-xs text-ink-soft">
+                              {team.division}
+                            </p>
+                          </div>
+                          <div className="mt-2">
+                            <TeamEditForm team={team} />
+                          </div>
                         </div>
                       </Card>
                     </li>

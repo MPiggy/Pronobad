@@ -193,6 +193,140 @@ export async function createTeam(
   }
 }
 
+const updateTeamSchema = z.object({
+  teamId: z.string().min(1, { message: 'Équipe invalide.' }),
+  name: z
+    .string()
+    .trim()
+    .min(1, { message: 'Indiquez le nom de l’équipe (ex. « Lyon 1 »).' })
+    .max(80, { message: 'Ce nom est trop long (80 caractères maximum).' }),
+  division: z
+    .string()
+    .trim()
+    .min(1, { message: 'Indiquez la division (ex. « Régionale 1 »).' })
+    .max(60, { message: 'Cette division est trop longue (60 caractères maximum).' }),
+})
+
+/** Renames a team and/or changes its division. Superadmin only. */
+export async function updateTeam(
+  _prevState: ManageState,
+  formData: FormData,
+): Promise<ManageState> {
+  const parsed = updateTeamSchema.safeParse({
+    teamId: formData.get('teamId'),
+    name: formData.get('name'),
+    division: formData.get('division'),
+  })
+
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: parsed.error.issues[0]?.message ?? 'Équipe invalide.',
+    }
+  }
+
+  const { teamId, name, division } = parsed.data
+
+  try {
+    const actor = await requireSuperadmin()
+
+    const before = await db.team.findUnique({
+      where: { id: teamId },
+      select: { name: true, division: true, seasonId: true },
+    })
+
+    if (!before) {
+      return { status: 'error', message: 'Cette équipe n’existe plus.' }
+    }
+
+    await db.team.update({
+      where: { id: teamId },
+      data: { name, division },
+    })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'TEAM_UPDATED',
+        entity: 'Team',
+        entityId: teamId,
+        before,
+        after: { name, division, seasonId: before.seasonId },
+      },
+    })
+
+    revalidateAdminPages()
+    updateTag(matchesTag(before.seasonId))
+
+    return { status: 'saved', message: `Équipe « ${name} » mise à jour.` }
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return {
+        status: 'error',
+        message: 'Une équipe de ce nom existe déjà cette saison.',
+      }
+    }
+
+    return toErrorState(error)
+  }
+}
+
+const deleteTeamSchema = z.object({
+  teamId: z.string().min(1, { message: 'Équipe invalide.' }),
+})
+
+/**
+ * Deletes a team. Cascades to its fixtures (and their predictions) per the
+ * schema's `onDelete: Cascade` — the confirmation copy in the form is what
+ * actually protects against an accidental click.
+ */
+export async function deleteTeam(
+  _prevState: ManageState,
+  formData: FormData,
+): Promise<ManageState> {
+  const parsed = deleteTeamSchema.safeParse({
+    teamId: formData.get('teamId'),
+  })
+
+  if (!parsed.success) {
+    return { status: 'error', message: 'Équipe invalide.' }
+  }
+
+  const { teamId } = parsed.data
+
+  try {
+    const actor = await requireSuperadmin()
+
+    const team = await db.team.findUnique({
+      where: { id: teamId },
+      select: { name: true, division: true, seasonId: true },
+    })
+
+    if (!team) {
+      return { status: 'error', message: 'Cette équipe n’existe plus.' }
+    }
+
+    await db.team.delete({ where: { id: teamId } })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'TEAM_DELETED',
+        entity: 'Team',
+        entityId: teamId,
+        before: team,
+      },
+    })
+
+    revalidateAdminPages()
+    updateTag(matchesTag(team.seasonId))
+
+    return { status: 'saved', message: `Équipe « ${team.name} » supprimée.` }
+  } catch (error) {
+    return toErrorState(error)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 

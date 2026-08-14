@@ -2,7 +2,14 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { createMatch, createSeason, createTeam, type ManageState } from './actions'
+import {
+  createMatch,
+  createSeason,
+  createTeam,
+  deleteTeam,
+  updateTeam,
+  type ManageState,
+} from './actions'
 
 /**
  * Creation forms for the structure page: season, team, fixture. One
@@ -146,6 +153,100 @@ export function TeamForm() {
       <StateMessage state={state} />
       <SubmitButton>Créer l’équipe</SubmitButton>
     </form>
+  )
+}
+
+export type TeamRow = { id: string; name: string; division: string }
+
+function RenameForm({ team }: { team: TeamRow }) {
+  const [state, formAction] = useActionState<ManageState, FormData>(
+    updateTeam,
+    IDLE,
+  )
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <input type="hidden" name="teamId" value={team.id} />
+
+      <div>
+        <label htmlFor={`${team.id}-name`} className={labelClass}>
+          Nom de l’équipe
+        </label>
+        <input
+          id={`${team.id}-name`}
+          name="name"
+          type="text"
+          required
+          defaultValue={team.name}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${team.id}-division`} className={labelClass}>
+          Division
+        </label>
+        <input
+          id={`${team.id}-division`}
+          name="division"
+          type="text"
+          required
+          defaultValue={team.division}
+          className={inputClass}
+        />
+      </div>
+
+      <StateMessage state={state} />
+      <SubmitButton>Enregistrer les modifications</SubmitButton>
+    </form>
+  )
+}
+
+function DeleteTeamForm({ team }: { team: TeamRow }) {
+  const [state, formAction] = useActionState<ManageState, FormData>(
+    deleteTeam,
+    IDLE,
+  )
+
+  return (
+    <form
+      action={formAction}
+      className="space-y-2"
+      onSubmit={(event) => {
+        if (
+          !confirm(
+            `Supprimer « ${team.name} » ? Ses rencontres et les pronostics associés seront aussi supprimés. Cette action est irréversible.`,
+          )
+        ) {
+          event.preventDefault()
+        }
+      }}
+    >
+      <input type="hidden" name="teamId" value={team.id} />
+      <StateMessage state={state} />
+      <button
+        type="submit"
+        className="w-full rounded-md border border-loss/40 bg-transparent px-4 py-2.5 text-sm font-semibold text-loss transition-colors hover:bg-loss/10"
+      >
+        Supprimer l’équipe
+      </button>
+    </form>
+  )
+}
+
+export function TeamEditForm({ team }: { team: TeamRow }) {
+  return (
+    <details className="group">
+      <summary className="cursor-pointer list-none text-xs font-medium text-court-dark marker:content-none">
+        <span className="group-open:hidden">Modifier</span>
+        <span className="hidden group-open:inline">Fermer</span>
+      </summary>
+
+      <div className="mt-3 space-y-5 border-t border-line pt-3">
+        <RenameForm team={team} />
+        <DeleteTeamForm team={team} />
+      </div>
+    </details>
   )
 }
 
