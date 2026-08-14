@@ -20,7 +20,7 @@ async function HomeContent() {
   // A signed-in member has no use for the pitch — send them to the fixtures.
   const user = await getCurrentUser()
 
-  if (user) redirect('/fixtures')
+  if (user) redirect('/home')
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[calc(2rem+var(--safe-top))]">

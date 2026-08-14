@@ -9,7 +9,7 @@ import { useState, type ReactNode } from 'react'
  * Determines which direction a tab switch slides: moving right along the bar
  * slides the new page in from the right, and back gives the mirror.
  */
-const TAB_ORDER = ['/fixtures', '/leaderboard', '/profile', '/admin']
+const TAB_ORDER = ['/fixtures', '/home', '/leaderboard', '/profile', '/admin']
 
 function tabIndex(pathname: string): number {
   return TAB_ORDER.findIndex(

@@ -20,7 +20,10 @@
       "Bash(echo '{\"name\":\"qa-scratch\",\"version\":\"1.0.0\",\"type\":\"module\",\"private\":true}')",
       "Read(//c//**)",
       "PowerShell(npm run lint)",
-      "PowerShell(npm run typecheck)"
+      "PowerShell(npm run typecheck)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(npx next typegen)",
+      "PowerShell(npx vitest run)"
     ]
   }
 }

@@ -10,25 +10,25 @@ describe('safeRedirectPath', () => {
   })
 
   it('falls back when there is no value', () => {
-    expect(safeRedirectPath(null)).toBe('/fixtures')
-    expect(safeRedirectPath(undefined)).toBe('/fixtures')
-    expect(safeRedirectPath('')).toBe('/fixtures')
+    expect(safeRedirectPath(null)).toBe('/home')
+    expect(safeRedirectPath(undefined)).toBe('/home')
+    expect(safeRedirectPath('')).toBe('/home')
   })
 
   it('rejects absolute URLs pointing off-site', () => {
-    expect(safeRedirectPath('https://evil.example')).toBe('/fixtures')
-    expect(safeRedirectPath('http://evil.example/path')).toBe('/fixtures')
+    expect(safeRedirectPath('https://evil.example')).toBe('/home')
+    expect(safeRedirectPath('http://evil.example/path')).toBe('/home')
   })
 
   // The interesting cases: these start with a slash and so look relative, but
   // browsers resolve them to a different origin.
   it('rejects protocol-relative URLs', () => {
-    expect(safeRedirectPath('//evil.example')).toBe('/fixtures')
-    expect(safeRedirectPath('//evil.example/fixtures')).toBe('/fixtures')
+    expect(safeRedirectPath('//evil.example')).toBe('/home')
+    expect(safeRedirectPath('//evil.example/fixtures')).toBe('/home')
   })
 
   it('rejects backslash-prefixed URLs', () => {
-    expect(safeRedirectPath('/\\evil.example')).toBe('/fixtures')
+    expect(safeRedirectPath('/\\evil.example')).toBe('/home')
   })
 
   it('honours an explicit fallback', () => {

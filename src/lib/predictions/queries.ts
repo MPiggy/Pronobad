@@ -82,6 +82,37 @@ export async function getMatchesForUser({
   return matches.map(withPrediction)
 }
 
+/**
+ * The next fixture that hasn't been played yet, with the caller's prediction.
+ *
+ * "Next" is by kickoff time, not lock time — once locked-but-not-played it's
+ * still the one a member cares about seeing on the home screen. Once a result
+ * lands the match stops being "next" even if a later one hasn't been created yet.
+ */
+export async function getNextMatchForUser({
+  seasonId,
+  userId,
+  now,
+}: {
+  seasonId: string
+  userId: string
+  now: Date
+}) {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(matchesTag(seasonId))
+
+  const match = await db.match.findFirst({
+    where: { seasonId, playedAt: { gte: now }, resultEnteredAt: null },
+    select: matchWithPredictionSelect(userId),
+    orderBy: { playedAt: 'asc' },
+  })
+
+  if (!match) return null
+
+  return withPrediction(match)
+}
+
 /** One fixture, with the caller's prediction. */
 export async function getMatchForUser({
   matchId,

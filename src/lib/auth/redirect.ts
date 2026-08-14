@@ -9,7 +9,7 @@
  */
 export function safeRedirectPath(
   value: string | null | undefined,
-  fallback = '/fixtures',
+  fallback = '/home',
 ): string {
   if (!value) return fallback
 

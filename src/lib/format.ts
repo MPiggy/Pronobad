@@ -130,6 +130,25 @@ function parisOffsetMs(at: Date): number {
   return paris.getTime() - at.getTime()
 }
 
+/**
+ * "J-2" style day countdown to a fixture, in Paris calendar days.
+ *
+ * Counts calendar days rather than 24h chunks, so a match tomorrow morning
+ * reads "J-1" all evening rather than flipping to "J-0" a few hours early —
+ * what a member means by "in 2 days" is calendar days, not elapsed hours.
+ */
+export function formatMatchCountdown(playedAt: Date, now: Date): string {
+  const dayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE })
+  const days = Math.round(
+    (Date.parse(dayFormatter.format(playedAt)) - Date.parse(dayFormatter.format(now))) /
+      86_400_000,
+  )
+
+  if (days <= 0) return 'Aujourd’hui'
+  if (days === 1) return 'J-1'
+  return `J-${days}`
+}
+
 /** "5 - 3", with the non-breaking spaces that keep a score on one line. */
 export function formatScore(homeScore: number, awayScore: number): string {
   return `${homeScore} - ${awayScore}`
