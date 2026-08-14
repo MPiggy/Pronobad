@@ -15,7 +15,10 @@
       "PowerShell(. .\\\\scripts\\\\use-node.ps1)",
       "PowerShell(npx --yes playwright install chromium 2>&1)",
       "Bash(npx --yes playwright install chromium)",
-      "PowerShell(npx eslint src/components/bottom-nav.tsx)"
+      "PowerShell(npx eslint src/components/bottom-nav.tsx)",
+      "Bash(mkdir -p /c/pw-qa-scratch)",
+      "Bash(echo '{\"name\":\"qa-scratch\",\"version\":\"1.0.0\",\"type\":\"module\",\"private\":true}')",
+      "Read(//c//**)"
     ]
   }
 }

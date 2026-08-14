@@ -28,9 +28,9 @@ export default function SignupPage() {
 
       <SignupForm />
 
-      <p className="mt-6 text-center text-sm text-ink-soft">
+      <p className="mt-6 text-center text-sm text-shuttle-text-soft">
         Déjà un compte ?{' '}
-        <Link href="/login" className="font-medium text-ink underline">
+        <Link href="/login" className="font-medium text-shuttle-text underline">
           Se connecter
         </Link>
       </p>

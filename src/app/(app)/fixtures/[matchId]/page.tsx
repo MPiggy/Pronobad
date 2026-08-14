@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Clock } from 'lucide-react'
 import { requireUser } from '@/lib/auth/session'
 import { getMatchForUser } from '@/lib/predictions/queries'
 import { explainLock, lockState } from '@/lib/predictions/locking'
@@ -74,9 +75,14 @@ export default async function MatchPage({
             ))}
           </div>
 
-          <p className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
-            Coup d’envoi à {formatTime(match.playedAt)}
-            {!state.locked && <> · {formatTimeRemaining(state.msRemaining)}</>}
+          <p className="mt-4 flex flex-wrap items-center gap-x-1.5 border-t border-line pt-3 text-xs text-ink-soft">
+            <span>Coup d’envoi à {formatTime(match.playedAt)}</span>
+            {!state.locked && (
+              <span className="flex items-center gap-1 font-medium text-court-dark">
+                · <Clock aria-hidden className="size-3.5" />
+                {formatTimeRemaining(state.msRemaining)}
+              </span>
+            )}
           </p>
         </section>
 

@@ -40,12 +40,12 @@ export default async function LoginPage({
           <LoginForm next={safeRedirectPath(next)} />
 
           <div className="mt-6 flex flex-col items-center gap-2 text-sm">
-            <Link href="/forgot-password" className="text-ink-soft underline">
+            <Link href="/forgot-password" className="text-shuttle-text-soft underline">
               Mot de passe oublié ?
             </Link>
-            <p className="text-ink-soft">
+            <p className="text-shuttle-text-soft">
               Pas encore de compte ?{' '}
-              <Link href="/signup" className="font-medium text-ink underline">
+              <Link href="/signup" className="font-medium text-shuttle-text underline">
                 Créer un compte
               </Link>
             </p>

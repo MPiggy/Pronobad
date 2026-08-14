@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { requireUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getLeaderboard } from '@/lib/leaderboard/queries'
-import { formatPoints } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { RulesButton } from './rules-button'
 
 export const metadata: Metadata = {
   title: 'Classement — BetClichy',
@@ -30,7 +30,7 @@ export default async function LeaderboardPage() {
   const rows = await getLeaderboard({ seasonId: season.id })
 
   return (
-    <PageShell title="Classement" subtitle={season.name}>
+    <PageShell title="Classement" subtitle={season.name} action={<RulesButton />}>
       {rows.length === 0 ? (
         <EmptyState
           icon="🏆"
@@ -83,11 +83,6 @@ export default async function LeaderboardPage() {
           })}
         </ol>
       )}
-
-      <p className="mt-6 rounded-xl border border-line bg-sheet px-4 py-3 text-xs leading-relaxed text-ink-soft">
-        Score exact : {formatPoints(3)}. Bon vainqueur : {formatPoints(1)}. Les
-        points sont figés au moment de la saisie du résultat.
-      </p>
     </PageShell>
   )
 }

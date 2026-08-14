@@ -23,8 +23,8 @@ export default function ForgotPasswordPage() {
 
       <ForgotPasswordForm />
 
-      <p className="mt-6 text-center text-sm text-ink-soft">
-        <Link href="/login" className="font-medium text-ink underline">
+      <p className="mt-6 text-center text-sm text-shuttle-text-soft">
+        <Link href="/login" className="font-medium text-shuttle-text underline">
           Retour à la connexion
         </Link>
       </p>

@@ -1,10 +1,9 @@
-import Link from 'next/link'
+import { Clock } from 'lucide-react'
 import { lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
 import {
   formatMatchDateTime,
   formatPoints,
-  formatScore,
   formatTimeRemaining,
 } from '@/lib/format'
 
@@ -14,6 +13,9 @@ import {
  * The card's whole job is answering "do I need to do something about this
  * one?" at a glance, so the status pill is the loudest element rather than the
  * team names — a member scrolling on a phone is scanning for what is still open.
+ *
+ * Purely presentational: the caller decides what a tap does (navigate, open a
+ * modal, …), so this renders its content only — no wrapping link or button.
  */
 
 export type MatchCardData = {
@@ -52,72 +54,68 @@ export function MatchCard({ match, now }: { match: MatchCardData; now: Date }) {
   const { prediction } = match
   const hasResult = match.homeScore !== null && match.awayScore !== null
 
+  const rows = [
+    { name: match.homeTeam.name, score: match.homeScore },
+    { name: match.awayTeam.name, score: match.awayScore },
+  ]
+
   return (
-    <li>
-      <Link
-        href={`/fixtures/${match.id}`}
-        className="block rounded-2xl border border-line bg-sheet p-4 transition-colors active:bg-shuttle"
-      >
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <time
-            dateTime={match.playedAt.toISOString()}
-            className="text-xs font-medium text-ink-soft"
-          >
-            {formatMatchDateTime(match.playedAt)}
-          </time>
+    <div className="rounded-2xl border border-line bg-sheet p-4 text-left transition-colors">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <time
+          dateTime={match.playedAt.toISOString()}
+          className="text-xs font-medium text-ink-soft"
+        >
+          {formatMatchDateTime(match.playedAt)}
+        </time>
 
-          {!state.locked && !prediction && <StatusPill tone="open">À pronostiquer</StatusPill>}
-          {!state.locked && prediction && <StatusPill tone="pending">Pronostic enregistré</StatusPill>}
-          {state.locked && !hasResult && <StatusPill tone="pending">Fermé</StatusPill>}
-          {state.locked && hasResult && (
-            prediction?.score
-              ? <StatusPill tone={prediction.score.points > 0 ? 'done' : 'missed'}>
-                  {formatPoints(prediction.score.points)}
-                </StatusPill>
-              : <StatusPill tone="missed">Terminé</StatusPill>
-          )}
-        </div>
+        {!state.locked && !prediction && <StatusPill tone="open">À pronostiquer</StatusPill>}
+        {!state.locked && prediction && <StatusPill tone="pending">Pronostic enregistré</StatusPill>}
+        {state.locked && !hasResult && <StatusPill tone="pending">Fermé</StatusPill>}
+        {state.locked && hasResult && (
+          prediction?.score
+            ? <StatusPill tone={prediction.score.points > 0 ? 'done' : 'missed'}>
+                {formatPoints(prediction.score.points)}
+              </StatusPill>
+            : <StatusPill tone="missed">Terminé</StatusPill>
+        )}
+      </div>
 
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="truncate text-sm font-medium text-ink">{match.homeTeam.name}</p>
-            <p className="truncate text-sm font-medium text-ink">{match.awayTeam.name}</p>
+      <div className="space-y-1.5">
+        {rows.map((team) => (
+          <div key={team.name} className="flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-sm font-medium text-ink">{team.name}</p>
+            {hasResult && (
+              <p className="shrink-0 text-lg font-bold tabular-nums text-ink">{team.score}</p>
+            )}
           </div>
+        ))}
+      </div>
 
-          {hasResult && (
-            <div className="shrink-0 text-right">
-              <p className="text-xs uppercase tracking-wide text-ink-soft">Résultat</p>
-              <p className="text-lg font-bold tabular-nums text-ink">
-                {formatScore(match.homeScore!, match.awayScore!)}
-              </p>
-            </div>
-          )}
-        </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-xs">
+        {prediction ? (
+          <span className="text-ink-soft">
+            Votre pronostic :{' '}
+            <span className="font-semibold tabular-nums text-ink">
+              {prediction.homeScore} - {prediction.awayScore}
+            </span>
+            {prediction.score && (
+              <> — {explainRule(prediction.score.ruleApplied as ScoringRule)}</>
+            )}
+          </span>
+        ) : (
+          <span className="text-ink-soft">
+            {state.locked ? 'Aucun pronostic' : 'Vous n’avez pas encore pronostiqué'}
+          </span>
+        )}
 
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-xs">
-          {prediction ? (
-            <span className="text-ink-soft">
-              Votre pronostic :{' '}
-              <span className="font-semibold tabular-nums text-ink">
-                {formatScore(prediction.homeScore, prediction.awayScore)}
-              </span>
-              {prediction.score && (
-                <> — {explainRule(prediction.score.ruleApplied as ScoringRule)}</>
-              )}
-            </span>
-          ) : (
-            <span className="text-ink-soft">
-              {state.locked ? 'Aucun pronostic' : 'Vous n’avez pas encore pronostiqué'}
-            </span>
-          )}
-
-          {!state.locked && (
-            <span className="shrink-0 font-medium text-court-dark">
-              {formatTimeRemaining(state.msRemaining)}
-            </span>
-          )}
-        </div>
-      </Link>
-    </li>
+        {!state.locked && (
+          <span className="flex shrink-0 items-center gap-1 font-medium text-court-dark">
+            <Clock aria-hidden className="size-3.5" />
+            {formatTimeRemaining(state.msRemaining)}
+          </span>
+        )}
+      </div>
+    </div>
   )
 }

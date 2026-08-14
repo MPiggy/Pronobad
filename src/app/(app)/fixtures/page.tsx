@@ -4,7 +4,7 @@ import { getCurrentSeason } from '@/lib/seasons'
 import { getMatchesForUser } from '@/lib/predictions/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
-import { MatchCard } from '@/components/match-card'
+import { MatchModalTrigger } from './match-modal-trigger'
 
 export const metadata: Metadata = {
   title: 'Rencontres — Betclichy',
@@ -77,7 +77,9 @@ export default async function FixturesPage() {
             ) : (
               <ul className="space-y-3">
                 {open.map((match) => (
-                  <MatchCard key={match.id} match={match} now={now} />
+                  <li key={match.id}>
+                    <MatchModalTrigger match={match} now={now} />
+                  </li>
                 ))}
               </ul>
             )}
@@ -93,7 +95,9 @@ export default async function FixturesPage() {
               </h2>
               <ul className="space-y-3">
                 {closed.map((match) => (
-                  <MatchCard key={match.id} match={match} now={now} />
+                  <li key={match.id}>
+                    <MatchModalTrigger match={match} now={now} />
+                  </li>
                 ))}
               </ul>
             </section>

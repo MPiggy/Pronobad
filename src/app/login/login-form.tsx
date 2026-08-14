@@ -126,7 +126,7 @@ export function DemoLoginForm({ next }: { next: string }) {
 
       <SubmitButton label="Entrer" pendingLabel="Connexion…" />
 
-      <p className="text-center text-xs leading-relaxed text-ink-soft">
+      <p className="text-center text-xs leading-relaxed text-shuttle-text-soft">
         Version démo : entrez simplement un nom pour découvrir l’application.
       </p>
     </form>
