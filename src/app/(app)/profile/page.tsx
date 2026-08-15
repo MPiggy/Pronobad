@@ -8,6 +8,7 @@ import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { signOut } from './actions'
 
 export const metadata: Metadata = {
   title: 'Profil — BetClichy',
@@ -83,7 +84,7 @@ async function ProfileContent() {
               Admin
             </Link>
           )}
-          <form action="/auth/signout" method="post">
+          <form action={signOut}>
             <button
               type="submit"
               className="rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
