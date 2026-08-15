@@ -8,6 +8,7 @@ import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
 import { signOut } from './actions'
 
 export const metadata: Metadata = {
@@ -37,9 +38,29 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  */
 export default function ProfilePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<ProfileSkeleton />}>
       <ProfileContent />
     </Suspense>
+  )
+}
+
+/** The stat row, the history heading, then the prediction cards under it. */
+function ProfileSkeleton() {
+  return (
+    <SkeletonShell>
+      <div className="space-y-6">
+        <div className="flex gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[86px] flex-1 rounded-2xl" />
+          ))}
+        </div>
+
+        <div>
+          <Skeleton className="mb-3 h-4 w-36" />
+          <SkeletonCards count={4} className="h-[116px]" />
+        </div>
+      </div>
+    </SkeletonShell>
   )
 }
 

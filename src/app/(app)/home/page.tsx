@@ -5,6 +5,7 @@ import { getCurrentSeason } from '@/lib/seasons'
 import { getMatchesForUser } from '@/lib/predictions/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
 import { MatchModalTrigger } from '../fixtures/match-modal-trigger'
 
 export const metadata: Metadata = {
@@ -23,9 +24,19 @@ export const metadata: Metadata = {
  */
 export default function HomePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<HomeSkeleton />}>
       <HomeContent />
     </Suspense>
+  )
+}
+
+/** The "À venir" section heading and its match cards — the top of the list a member sees. */
+function HomeSkeleton() {
+  return (
+    <SkeletonShell>
+      <Skeleton className="mb-3 h-4 w-20" />
+      <SkeletonCards count={5} className="h-[104px]" />
+    </SkeletonShell>
   )
 }
 

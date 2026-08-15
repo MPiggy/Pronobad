@@ -4,6 +4,7 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { SkeletonCards, SkeletonShell } from '@/components/skeleton'
 import { RulesButton } from './rules-button'
 
 export const metadata: Metadata = {
@@ -26,9 +27,18 @@ const MEDALS = ['🥇', '🥈', '🥉'] as const
  */
 export default function LeaderboardPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<LeaderboardSkeleton />}>
       <LeaderboardContent />
     </Suspense>
+  )
+}
+
+/** Eight ranking rows — a full phone screen's worth, so the list doesn't grow into view. */
+function LeaderboardSkeleton() {
+  return (
+    <SkeletonShell>
+      <SkeletonCards count={8} className="h-[62px]" />
+    </SkeletonShell>
   )
 }
 

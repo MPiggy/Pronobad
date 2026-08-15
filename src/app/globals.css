@@ -119,19 +119,3 @@ select {
 
 .animate-toast-in { animation: toast-in 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-toast-out { animation: toast-out 150ms ease-in forwards; }
-
-/* Tab slide: the incoming page sweeps in from the direction of travel along
- * the bottom nav, so switching tabs reads as moving across a strip rather
- * than a hard cut. */
-@keyframes tab-slide-from-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes tab-slide-from-left {
-  from { opacity: 0; transform: translateX(-16px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.animate-tab-from-right { animation: tab-slide-from-right 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-tab-from-left { animation: tab-slide-from-left 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }

@@ -5,6 +5,7 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getNextMatchForUser } from '@/lib/predictions/queries'
 import { EmptyState, PageShell } from '@/components/page-shell'
+import { Skeleton, SkeletonShell } from '@/components/skeleton'
 import { NextMatchHero } from '../home/next-match-hero'
 
 export const metadata: Metadata = {
@@ -19,9 +20,19 @@ export const metadata: Metadata = {
  */
 export default function FixturesPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<FixturesSkeleton />}>
       <FixturesContent />
     </Suspense>
+  )
+}
+
+/** One tall block for the hero card, plus the "see all fixtures" link under it. */
+function FixturesSkeleton() {
+  return (
+    <SkeletonShell>
+      <Skeleton className="h-[340px] rounded-3xl" />
+      <Skeleton className="mx-auto mt-6 h-5 w-48" />
+    </SkeletonShell>
   )
 }
 
