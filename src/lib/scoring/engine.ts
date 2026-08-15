@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { db, type TransactionClient } from '@/lib/db'
 import { scorePrediction } from '@/lib/scoring/rules'
 
 /**
@@ -8,12 +8,17 @@ import { scorePrediction } from '@/lib/scoring/rules'
  * then change without rewriting history, and a member can be shown exactly why
  * they scored what they did.
  *
- * The whole run is one transaction, so a fixture is never left half-scored —
- * a partially scored fixture would show a leaderboard that is wrong in a way
+ * Takes the Prisma client to run on, so a caller that is already inside a
+ * transaction — entering a result also updates the match and writes an audit
+ * row — can pass its own and keep the whole operation atomic. A fixture left
+ * FINISHED but unscored would show a leaderboard that is wrong in a way
  * nobody would notice.
  */
-export async function scoreMatch(matchId: string): Promise<{ scored: number }> {
-  const match = await db.match.findUnique({
+export async function scoreMatch(
+  matchId: string,
+  client: TransactionClient = db,
+): Promise<{ scored: number }> {
+  const match = await client.match.findUnique({
     where: { id: matchId },
     select: {
       id: true,
@@ -37,7 +42,7 @@ export async function scoreMatch(matchId: string): Promise<{ scored: number }> {
 
   const result = { homeScore, awayScore }
 
-  const predictions = await db.prediction.findMany({
+  const predictions = await client.prediction.findMany({
     where: { matchId },
     select: { id: true, userId: true, homeScore: true, awayScore: true },
   })
@@ -52,23 +57,24 @@ export async function scoreMatch(matchId: string): Promise<{ scored: number }> {
     ),
   }))
 
-  await db.$transaction(
-    scores.map((score) =>
-      // Upsert rather than create: an admin correcting a wrong result re-runs
-      // this, and the second run must overwrite the first rather than fail or
-      // double-count. `computedAt` moves so the correction is visible.
-      db.predictionScore.upsert({
-        where: { predictionId: score.predictionId },
-        create: score,
-        update: {
-          points: score.points,
-          ruleApplied: score.ruleApplied,
-          seasonId: score.seasonId,
-          computedAt: new Date(),
-        },
-      }),
-    ),
-  )
+  // Sequential rather than `$transaction([...])`: `client` is often already a
+  // transaction (transactions do not nest), and the caller owns the atomicity
+  // boundary either way.
+  for (const score of scores) {
+    // Upsert rather than create: an admin correcting a wrong result re-runs
+    // this, and the second run must overwrite the first rather than fail or
+    // double-count. `computedAt` moves so the correction is visible.
+    await client.predictionScore.upsert({
+      where: { predictionId: score.predictionId },
+      create: score,
+      update: {
+        points: score.points,
+        ruleApplied: score.ruleApplied,
+        seasonId: score.seasonId,
+        computedAt: new Date(),
+      },
+    })
+  }
 
   return { scored: scores.length }
 }
@@ -80,8 +86,11 @@ export async function scoreMatch(matchId: string): Promise<{ scored: number }> {
  * Leaving the scores behind would keep phantom points on the leaderboard for a
  * fixture that no longer has a result.
  */
-export async function unscoreMatch(matchId: string): Promise<{ removed: number }> {
-  const { count } = await db.predictionScore.deleteMany({
+export async function unscoreMatch(
+  matchId: string,
+  client: TransactionClient = db,
+): Promise<{ removed: number }> {
+  const { count } = await client.predictionScore.deleteMany({
     where: { prediction: { matchId } },
   })
 

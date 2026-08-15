@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { forbidden } from 'next/navigation'
-import { requireUser } from '@/lib/auth/session'
 import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
@@ -37,7 +36,8 @@ export default function AdminPage() {
 }
 
 async function AdminContent() {
-  await requireUser()
+  // `getActor` goes through `requireOnboardedUser`, so this is also the
+  // signed-in and onboarding gate for the page.
   const actor = await getActor()
 
   // Members have no business here. `forbidden()` renders a 403 rather than

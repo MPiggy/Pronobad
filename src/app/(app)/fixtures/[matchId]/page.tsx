@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Clock } from 'lucide-react'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { getMatchForUser } from '@/lib/predictions/queries'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
  * One fixture: the result if it is in, the member's prediction, and the entry
  * form while the fixture is still open.
  *
- * `requireUser` reads the session cookie, and the fixture is fetched with the
+ * `requireOnboardedUser` reads the session cookie, and the fixture is fetched with the
  * caller's own prediction attached, so the whole page is runtime-bound —
  * Suspense is what lets the route still prerender a shell around it.
  */
@@ -48,7 +48,7 @@ async function MatchContent({
   params: Promise<{ matchId: string }>
 }) {
   const { matchId } = await params
-  const user = await requireUser()
+  const user = await requireOnboardedUser()
 
   const match = await getMatchForUser({ matchId, userId: user.id })
 

@@ -7,6 +7,7 @@ import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/g
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
+import { scoreField } from '@/lib/predictions/score-field'
 import { leaderboardTag } from '@/lib/leaderboard/queries'
 import { MatchStatus } from '@/generated/prisma/enums'
 
@@ -32,14 +33,6 @@ function toErrorState(error: unknown): AdminState {
 
   throw error
 }
-
-const MAX_SCORE = 20
-
-const scoreField = z.coerce
-  .number({ message: 'Indiquez un score.' })
-  .int({ message: 'Le score doit être un nombre entier.' })
-  .min(0, { message: 'Un score ne peut pas être négatif.' })
-  .max(MAX_SCORE, { message: `Un score ne peut pas dépasser ${MAX_SCORE}.` })
 
 const resultSchema = z.object({
   matchId: z.string().min(1),
@@ -77,37 +70,61 @@ export async function enterResult(
 
     const before = await db.match.findUnique({
       where: { id: matchId },
-      select: { seasonId: true, homeScore: true, awayScore: true, status: true },
+      select: {
+        seasonId: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+        resultEnteredAt: true,
+      },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
 
-    await db.match.update({
-      where: { id: matchId },
-      data: {
-        homeScore,
-        awayScore,
-        status: MatchStatus.FINISHED,
-        // Set on first entry only: this doubles as a lock (a fixture with a
-        // result never reopens for predictions), so a correction must not
-        // look like a fresh entry.
-        resultEnteredAt: new Date(),
-      },
-    })
+    // `resultEnteredAt` is a Date; the audit columns are Json, so it is
+    // recorded as an ISO string like every other timestamp in this file.
+    const auditBefore = {
+      seasonId: before.seasonId,
+      homeScore: before.homeScore,
+      awayScore: before.awayScore,
+      status: before.status,
+      resultEnteredAt: before.resultEnteredAt?.toISOString() ?? null,
+    }
 
-    // Scoring runs after the result is committed, so the points are always
-    // computed against what is actually stored.
-    const { scored } = await scoreMatch(matchId)
+    // The result, the points it freezes, and the audit row are one operation:
+    // a failure between them would leave a FINISHED fixture whose predictions
+    // are unscored — a leaderboard silently missing points — or an untraceable
+    // rewrite of one.
+    const { scored } = await db.$transaction(async (tx) => {
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          homeScore,
+          awayScore,
+          status: MatchStatus.FINISHED,
+          // Set on first entry only: this doubles as a lock (a fixture with a
+          // result never reopens for predictions), so a correction must not
+          // look like a fresh entry — and must keep the original timestamp.
+          resultEnteredAt: before.resultEnteredAt ?? new Date(),
+        },
+      })
 
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: before.homeScore === null ? 'RESULT_ENTERED' : 'RESULT_CORRECTED',
-        entity: 'Match',
-        entityId: matchId,
-        before,
-        after: { homeScore, awayScore, status: MatchStatus.FINISHED },
-      },
+      // Scoring runs after the result is written, so the points are always
+      // computed against what is actually stored.
+      const result = await scoreMatch(matchId, tx)
+
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: before.homeScore === null ? 'RESULT_ENTERED' : 'RESULT_CORRECTED',
+          entity: 'Match',
+          entityId: matchId,
+          before: auditBefore,
+          after: { homeScore, awayScore, status: MatchStatus.FINISHED },
+        },
+      })
+
+      return result
     })
 
     revalidatePath('/admin')
@@ -151,27 +168,32 @@ export async function withdrawResult(
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
 
-    const { removed } = await unscoreMatch(matchId.data)
+    // One operation, for the mirror image of the reason `enterResult` is: the
+    // scores must not be deleted while the result they were computed from is
+    // still standing, and the withdrawal must not go unrecorded.
+    await db.$transaction(async (tx) => {
+      const { removed } = await unscoreMatch(matchId.data, tx)
 
-    await db.match.update({
-      where: { id: matchId.data },
-      data: {
-        homeScore: null,
-        awayScore: null,
-        status: MatchStatus.UPCOMING,
-        resultEnteredAt: null,
-      },
-    })
+      await tx.match.update({
+        where: { id: matchId.data },
+        data: {
+          homeScore: null,
+          awayScore: null,
+          status: MatchStatus.UPCOMING,
+          resultEnteredAt: null,
+        },
+      })
 
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'RESULT_WITHDRAWN',
-        entity: 'Match',
-        entityId: matchId.data,
-        before,
-        after: { homeScore: null, awayScore: null, removedScores: removed },
-      },
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'RESULT_WITHDRAWN',
+          entity: 'Match',
+          entityId: matchId.data,
+          before,
+          after: { homeScore: null, awayScore: null, removedScores: removed },
+        },
+      })
     })
 
     revalidatePath('/admin')

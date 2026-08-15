@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMatchesForUser } from '@/lib/predictions/queries'
 import { isLocked } from '@/lib/predictions/locking'
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
  * Open fixtures come first and past ones are pushed below, because the only
  * action this app ever asks for is "predict the ones that are still open".
  *
- * `requireUser` reads the session cookie, and the match list is fetched with
+ * `requireOnboardedUser` reads the session cookie, and the match list is fetched with
  * the caller's own predictions attached, so the whole page is runtime-bound —
  * Suspense is what lets the route still prerender a shell around it.
  */
@@ -30,7 +30,10 @@ export default function HomePage() {
 }
 
 async function HomeContent() {
-  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
+  const [user, season] = await Promise.all([
+    requireOnboardedUser(),
+    getCurrentSeason(),
+  ])
 
   if (!season) {
     return (

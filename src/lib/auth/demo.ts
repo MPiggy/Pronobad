@@ -16,6 +16,27 @@ export const DEMO_COOKIE = 'pronobad-demo-name'
 export const DEMO_AUTH_ID = 'demo'
 export const DEMO_EMAIL = 'demo@pronobad.local'
 
+/**
+ * Demo mode is a development affordance, never a production one: it turns any
+ * typed name into a superadmin session with no credential at all. Gating it on
+ * `NODE_ENV` means a stray `DEMO_MODE=true` in a deploy's environment cannot
+ * open the real app up — it is one env var away otherwise.
+ */
 export function isDemoMode(): boolean {
-  return process.env.DEMO_MODE === 'true'
+  return process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production'
+}
+
+/**
+ * The display name held in the demo cookie.
+ *
+ * The cookie is attacker-supplied, so a malformed percent-escape like `%` must
+ * not throw: an uncaught `URIError` here would turn every request into a 500
+ * until the cookie is cleared by hand. Falls back to the raw value.
+ */
+export function decodeDemoName(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
 }

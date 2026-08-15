@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getNextMatchForUser } from '@/lib/predictions/queries'
 import { EmptyState, PageShell } from '@/components/page-shell'
@@ -26,7 +26,10 @@ export default function FixturesPage() {
 }
 
 async function FixturesContent() {
-  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
+  const [user, season] = await Promise.all([
+    requireOnboardedUser(),
+    getCurrentSeason(),
+  ])
 
   if (!season) {
     return (

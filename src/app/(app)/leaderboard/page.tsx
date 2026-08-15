@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getLeaderboard } from '@/lib/leaderboard/queries'
 import { EmptyState, PageShell } from '@/components/page-shell'
@@ -14,14 +14,29 @@ export const metadata: Metadata = {
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 
 /**
- * The season's leaderboard is the same for every viewer and comes entirely
- * from cached queries — only "which row is me" needs the caller's identity.
- * That single runtime read is isolated to `MyRow` below so the rest of the
- * list can still prerender as a static shell instead of the whole page
- * waiting on the session cookie.
+ * Every member's pseudo and points are on this page, so it is signed-in only:
+ * `requireOnboardedUser` runs before any row is rendered, rather than inside
+ * the rows. Isolating the session read to a per-row component would let the
+ * data stream to an anonymous caller first and redirect afterwards — leaving
+ * the proxy as the only real gate, which the server-side guard exists
+ * precisely not to rely on.
+ *
+ * Reading the session cookie makes the whole page runtime-bound; `Suspense` is
+ * what lets the route still prerender a shell around it.
  */
-export default async function LeaderboardPage() {
-  const season = await getCurrentSeason()
+export default function LeaderboardPage() {
+  return (
+    <Suspense>
+      <LeaderboardContent />
+    </Suspense>
+  )
+}
+
+async function LeaderboardContent() {
+  const [user, season] = await Promise.all([
+    requireOnboardedUser(),
+    getCurrentSeason(),
+  ])
 
   if (!season) {
     return (
@@ -47,18 +62,14 @@ export default async function LeaderboardPage() {
         />
       ) : (
         <ol className="space-y-2">
-          {rows.map((row) => {
-            const medal = MEDALS[row.rank - 1]
-
-            return (
-              <Suspense
-                key={row.userId}
-                fallback={<Row row={row} medal={medal} isMe={false} />}
-              >
-                <MyRow row={row} medal={medal} />
-              </Suspense>
-            )
-          })}
+          {rows.map((row) => (
+            <Row
+              key={row.userId}
+              row={row}
+              medal={MEDALS[row.rank - 1]}
+              isMe={row.userId === user.id}
+            />
+          ))}
         </ol>
       )}
     </PageShell>
@@ -66,13 +77,6 @@ export default async function LeaderboardPage() {
 }
 
 type Row = Awaited<ReturnType<typeof getLeaderboard>>[number]
-
-/** Resolves the caller's identity to know whether this row is theirs. */
-async function MyRow({ row, medal }: { row: Row; medal?: string }) {
-  const user = await requireUser()
-
-  return <Row row={row} medal={medal} isMe={row.userId === user.id} />
-}
 
 function Row({ row, medal, isMe }: { row: Row; medal?: string; isMe: boolean }) {
   return (

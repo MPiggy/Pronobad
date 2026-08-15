@@ -3,7 +3,13 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
-import { DEMO_AUTH_ID, DEMO_COOKIE, DEMO_EMAIL, isDemoMode } from '@/lib/auth/demo'
+import {
+  DEMO_AUTH_ID,
+  DEMO_COOKIE,
+  DEMO_EMAIL,
+  decodeDemoName,
+  isDemoMode,
+} from '@/lib/auth/demo'
 import type { User } from '@/generated/prisma/client'
 
 /**
@@ -113,7 +119,7 @@ async function getDemoUser(): Promise<User | null> {
     create: {
       authId: DEMO_AUTH_ID,
       email: DEMO_EMAIL,
-      name: decodeURIComponent(raw),
+      name: decodeDemoName(raw),
       isSuperadmin: true,
     },
   })

@@ -6,6 +6,7 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
+import { scoreField } from '@/lib/predictions/score-field'
 
 /**
  * Submitting or editing a prediction.
@@ -16,20 +17,6 @@ import { matchesTag, matchTag } from '@/lib/predictions/queries'
  * the client. The form hiding itself after lock is a courtesy; this function
  * is the actual rule (PLAN.md § Locking).
  */
-
-/**
- * An interclub fixture is played over a fixed number of rubbers, so scores are
- * small non-negative integers. The cap is deliberately loose rather than
- * pinned to a division's exact rubber count: formats differ between divisions
- * and a wrong cap would reject legitimate predictions.
- */
-const MAX_SCORE = 20
-
-const scoreField = z.coerce
-  .number({ message: 'Indiquez un score.' })
-  .int({ message: 'Le score doit être un nombre entier.' })
-  .min(0, { message: 'Un score ne peut pas être négatif.' })
-  .max(MAX_SCORE, { message: `Un score ne peut pas dépasser ${MAX_SCORE}.` })
 
 const predictionSchema = z.object({
   matchId: z.string().min(1),

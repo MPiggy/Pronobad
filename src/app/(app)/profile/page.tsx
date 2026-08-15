@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { requireUser } from '@/lib/auth/session'
+import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getPredictionHistory } from '@/lib/predictions/queries'
 import { getLeaderboard } from '@/lib/leaderboard/queries'
@@ -30,9 +30,9 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  * shows the prediction, the actual result and the rule that was applied,
  * rather than just a number.
  *
- * `requireUser` reads the session cookie, and every read below is scoped to
- * that user, so the whole page is runtime-bound — Suspense is what lets the
- * route still prerender a shell around it.
+ * `requireOnboardedUser` reads the session cookie, and every read below is
+ * scoped to that user, so the whole page is runtime-bound — Suspense is what
+ * lets the route still prerender a shell around it.
  */
 export default function ProfilePage() {
   return (
@@ -43,7 +43,10 @@ export default function ProfilePage() {
 }
 
 async function ProfileContent() {
-  const [user, season] = await Promise.all([requireUser(), getCurrentSeason()])
+  const [user, season] = await Promise.all([
+    requireOnboardedUser(),
+    getCurrentSeason(),
+  ])
 
   if (!season) {
     return (

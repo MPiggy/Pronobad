@@ -83,11 +83,42 @@ export async function getMatchesForUser({
 }
 
 /**
+ * Every fixture still awaiting a result, with the caller's prediction.
+ *
+ * Deliberately does *not* take the current time: `use cache` builds its key
+ * from the serialized arguments, so a fresh `Date` per request would miss the
+ * cache every single time and write a throwaway entry on each call. The clock
+ * belongs to the caller — see `getNextMatchForUser` below.
+ */
+async function getPendingMatchesForUser({
+  seasonId,
+  userId,
+}: {
+  seasonId: string
+  userId: string
+}) {
+  'use cache'
+  cacheLife('minutes')
+  cacheTag(matchesTag(seasonId))
+
+  const matches = await db.match.findMany({
+    where: { seasonId, resultEnteredAt: null },
+    select: matchWithPredictionSelect(userId),
+    orderBy: { playedAt: 'asc' },
+  })
+
+  return matches.map(withPrediction)
+}
+
+/**
  * The next fixture that hasn't been played yet, with the caller's prediction.
  *
  * "Next" is by kickoff time, not lock time — once locked-but-not-played it's
  * still the one a member cares about seeing on the home screen. Once a result
  * lands the match stops being "next" even if a later one hasn't been created yet.
+ *
+ * The time comparison runs here, outside the cached read, so the cached list is
+ * shared across requests instead of being re-fetched for every new timestamp.
  */
 export async function getNextMatchForUser({
   seasonId,
@@ -98,19 +129,9 @@ export async function getNextMatchForUser({
   userId: string
   now: Date
 }) {
-  'use cache'
-  cacheLife('minutes')
-  cacheTag(matchesTag(seasonId))
+  const pending = await getPendingMatchesForUser({ seasonId, userId })
 
-  const match = await db.match.findFirst({
-    where: { seasonId, playedAt: { gte: now }, resultEnteredAt: null },
-    select: matchWithPredictionSelect(userId),
-    orderBy: { playedAt: 'asc' },
-  })
-
-  if (!match) return null
-
-  return withPrediction(match)
+  return pending.find((match) => match.playedAt >= now) ?? null
 }
 
 /** One fixture, with the caller's prediction. */
