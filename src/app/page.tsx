@@ -86,9 +86,6 @@ async function HomeContent() {
         >
           Se connecter
         </Link>
-        <p className="mt-3 text-center text-xs text-shuttle-text-soft">
-          Connexion par lien e-mail, sans mot de passe.
-        </p>
       </div>
     </main>
   )
