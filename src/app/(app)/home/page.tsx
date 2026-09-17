@@ -9,6 +9,7 @@ import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
 import { MatchModalTrigger } from '../fixtures/match-modal-trigger'
+import { FixturesView } from './fixtures-view'
 
 export const metadata: Metadata = {
   title: 'Accueil — Betclichy',
@@ -32,10 +33,11 @@ export default function HomePage() {
   )
 }
 
-/** The "À venir" section heading and its match cards — the top of the list a member sees. */
+/** The list/calendar switch, then the "À venir" heading and its match cards — the top of the list a member sees. */
 function HomeSkeleton() {
   return (
     <SkeletonShell>
+      <Skeleton className="mb-5 h-[46px] rounded-full" />
       <Skeleton className="mb-3 h-4 w-20" />
       <SkeletonCards count={5} className="h-[104px]" />
     </SkeletonShell>
@@ -83,63 +85,72 @@ async function HomeContent() {
           body="Les rencontres apparaîtront ici dès qu’elles auront été ajoutées."
         />
       ) : (
-        <div className="space-y-8">
-          <section aria-labelledby="open-heading">
-            <div className="mb-3 flex items-baseline justify-between gap-2">
-              <h2
-                id="open-heading"
-                className="text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
-              >
-                À venir
-              </h2>
-              {toPredict > 0 && (
-                <span className="text-xs font-medium text-court">
-                  {toPredict} à pronostiquer
-                </span>
+        <FixturesView
+          now={now}
+          entries={matches.map((match) => ({
+            match,
+            maxScore: resolveMaxScore(match.maxScore, maxScore),
+          }))}
+          list={
+            <div className="space-y-8">
+              <section aria-labelledby="open-heading">
+                <div className="mb-3 flex items-baseline justify-between gap-2">
+                  <h2
+                    id="open-heading"
+                    className="text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
+                  >
+                    À venir
+                  </h2>
+                  {toPredict > 0 && (
+                    <span className="text-xs font-medium text-court">
+                      {toPredict} à pronostiquer
+                    </span>
+                  )}
+                </div>
+
+                {open.length === 0 ? (
+                  <p className="rounded-2xl border border-line bg-sheet px-4 py-3 text-sm text-ink-soft">
+                    Aucune rencontre ouverte aux pronostics pour le moment.
+                  </p>
+                ) : (
+                  <ul className="space-y-3">
+                    {open.map((match) => (
+                      <li key={match.id}>
+                        <MatchModalTrigger
+                          match={match}
+                          now={now}
+                          maxScore={resolveMaxScore(match.maxScore, maxScore)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              {closed.length > 0 && (
+                <section aria-labelledby="past-heading">
+                  <h2
+                    id="past-heading"
+                    className="mb-3 text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
+                  >
+                    Terminées
+                  </h2>
+                  <ul className="space-y-3">
+                    {closed.map((match) => (
+                      <li key={match.id}>
+                        <MatchModalTrigger
+                          match={match}
+                          now={now}
+                          maxScore={resolveMaxScore(match.maxScore, maxScore)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
             </div>
-
-            {open.length === 0 ? (
-              <p className="rounded-2xl border border-line bg-sheet px-4 py-3 text-sm text-ink-soft">
-                Aucune rencontre ouverte aux pronostics pour le moment.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {open.map((match) => (
-                  <li key={match.id}>
-                    <MatchModalTrigger
-                      match={match}
-                      now={now}
-                      maxScore={resolveMaxScore(match.maxScore, maxScore)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {closed.length > 0 && (
-            <section aria-labelledby="past-heading">
-              <h2
-                id="past-heading"
-                className="mb-3 text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
-              >
-                Terminées
-              </h2>
-              <ul className="space-y-3">
-                {closed.map((match) => (
-                  <li key={match.id}>
-                    <MatchModalTrigger
-                      match={match}
-                      now={now}
-                      maxScore={resolveMaxScore(match.maxScore, maxScore)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
+          }
+        />
       )}
     </PageShell>
   )

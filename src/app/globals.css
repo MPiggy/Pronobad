@@ -23,6 +23,7 @@
   --color-sheet: #fcfcfc;
 
   --color-win: oklch(0.6 0.16 150);
+  --color-partial: oklch(0.68 0.11 230);
   --color-loss: oklch(0.6 0.19 25);
   --color-pending: oklch(0.7 0.13 75);
 }

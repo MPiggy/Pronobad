@@ -40,6 +40,29 @@ export function formatFullDate(date: Date): string {
   return dayWithYearFormatter.format(date)
 }
 
+const longDayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: TIME_ZONE,
+})
+
+const monthYearFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: 'long',
+  year: 'numeric',
+  timeZone: TIME_ZONE,
+})
+
+/** "samedi 4 octobre" — the heading over a calendar day's fixtures. */
+export function formatLongDay(date: Date): string {
+  return longDayFormatter.format(date)
+}
+
+/** "octobre 2025" — the calendar's month title. */
+export function formatMonthYear(date: Date): string {
+  return monthYearFormatter.format(date)
+}
+
 /** "18:00" */
 export function formatTime(date: Date): string {
   return timeFormatter.format(date)
@@ -152,6 +175,11 @@ export function formatMatchCountdown(playedAt: Date, now: Date): string {
 /** "5 - 3", with the non-breaking spaces that keep a score on one line. */
 export function formatScore(homeScore: number, awayScore: number): string {
   return `${homeScore} - ${awayScore}`
+}
+
+/** "1er" / "4ᵉ" — a leaderboard position in French ordinal form. */
+export function formatRank(rank: number): string {
+  return rank === 1 ? '1er' : `${rank}ᵉ`
 }
 
 /** "3 points" / "1 point" — French pluralisation of the scoring scale. */
