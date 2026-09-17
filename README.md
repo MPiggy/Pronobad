@@ -146,6 +146,8 @@ tested, and they are far easier to test when answering "may this user do X" or
 | `src/lib/scoring/rules.ts` | 1 pt correct winner, 3 pts exact score — the 3 **replaces** the 1 |
 | `src/lib/scoring/engine.ts` | Freezes points into `PredictionScore`, in one transaction |
 | `src/lib/predictions/locking.ts` | Whether a fixture still accepts predictions |
+| `src/lib/predictions/score-field.ts` | Score validation, shared by predictions and results |
+| `src/lib/settings/queries.ts` | Competition settings — currently the score cap |
 
 Two behaviours worth knowing:
 
@@ -154,6 +156,24 @@ Two behaviours worth knowing:
 - **A fixture with a result is locked** even if `locksAt` is still in the
   future. `locksAt` is admin-editable, so without this, moving it backwards
   would reopen predictions on a scoreline everyone can already see.
+
+## Admin settings
+
+Superadmin-only, all audited, all re-checked server-side — the hidden UI is not
+the access control.
+
+| Setting | Where | Notes |
+|---|---|---|
+| Score cap (`AppSettings.maxScore`) | `/admin/manage` → Réglages | Highest score either side can be given. Defaults to **8**, the rubber count of a standard interclub fixture. One value for the whole competition |
+| Fixture date (`playedAt`) | `/admin` → Gérer cette rencontre | Rescheduling. `locksAt` always follows the new date |
+| Deadline (`locksAt`) | `/admin` → Gérer cette rencontre | Set it *after* rescheduling, or the reschedule overwrites it |
+
+The score cap is read at write time by both the prediction and the result
+actions, so the two can never disagree about what a legal score is. Lowering it
+leaves scores already above it standing — clamping them would rewrite the
+leaderboard to fix a typo in a setting — and the save reports how many there
+are. The settings row is created on first save; until then every read falls
+back to `DEFAULT_MAX_SCORE`, so a database that predates the table still works.
 
 ## Seeding
 

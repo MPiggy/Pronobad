@@ -7,15 +7,16 @@ import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/g
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
-import { scoreField } from '@/lib/predictions/score-field'
+import { scoreFieldFor } from '@/lib/predictions/score-field'
+import { getMaxScore } from '@/lib/settings/queries'
 import { leaderboardTag } from '@/lib/leaderboard/queries'
 import { MatchStatus } from '@/generated/prisma/enums'
 
 /**
- * Admin mutations: entering a result, and moving `locksAt`.
+ * Admin mutations: entering a result, moving `locksAt`, and rescheduling.
  *
- * These are the two actions that can silently rewrite a leaderboard, so both
- * are permission-checked server-side and both write an AuditLog row (PLAN.md
+ * These are the actions that can silently rewrite a leaderboard, so each is
+ * permission-checked server-side and each writes an AuditLog row (PLAN.md
  * § Roles & Permissions). `requireMatchManager` is the boundary — the admin UI
  * being hidden from members is not access control.
  */
@@ -34,11 +35,17 @@ function toErrorState(error: unknown): AdminState {
   throw error
 }
 
-const resultSchema = z.object({
-  matchId: z.string().min(1),
-  homeScore: scoreField,
-  awayScore: scoreField,
-})
+/**
+ * Built per call rather than once at module load: the cap is an admin setting,
+ * so a schema frozen at import time would keep enforcing the value the server
+ * happened to boot with.
+ */
+const resultSchemaFor = (maxScore: number) =>
+  z.object({
+    matchId: z.string().min(1),
+    homeScore: scoreFieldFor(maxScore),
+    awayScore: scoreFieldFor(maxScore),
+  })
 
 /**
  * Records a fixture's official result and freezes the points.
@@ -50,7 +57,7 @@ export async function enterResult(
   _prevState: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
-  const parsed = resultSchema.safeParse({
+  const parsed = resultSchemaFor(await getMaxScore()).safeParse({
     matchId: formData.get('matchId'),
     homeScore: formData.get('homeScore'),
     awayScore: formData.get('awayScore'),
@@ -276,6 +283,94 @@ export async function updateLocksAt(
     updateTag(matchTag(parsed.data.matchId))
 
     return { status: 'saved', message: 'Fermeture des pronostics mise à jour.' }
+  } catch (error) {
+    return toErrorState(error)
+  }
+}
+
+const playedAtSchema = z.object({
+  matchId: z.string().min(1),
+  // Same `datetime-local` caveat as `locksAt` above: no zone is posted, so the
+  // value is parsed explicitly against Europe/Paris rather than by `new Date()`.
+  playedAt: z.string().min(1, { message: 'Indiquez une date de rencontre.' }),
+})
+
+/**
+ * Reschedules a fixture.
+ *
+ * Interclub fixtures get postponed, which is why `playedAt` exists as its own
+ * column — but a postponement that left `locksAt` behind would close
+ * predictions weeks before the fixture is actually played. So the deadline
+ * always follows the new date, and an admin who wants a different one sets it
+ * afterwards with `updateLocksAt`.
+ *
+ * Both values land in one audit row: this can reopen a prediction window that
+ * had already closed, and "why is this fixture open again" needs an answer.
+ */
+export async function updateMatchDate(
+  _prevState: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = playedAtSchema.safeParse({
+    matchId: formData.get('matchId'),
+    playedAt: formData.get('playedAt'),
+  })
+
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: parsed.error.issues[0]?.message ?? 'Date invalide.',
+    }
+  }
+
+  const playedAt = parseParisDateTimeLocal(parsed.data.playedAt)
+
+  if (!playedAt || Number.isNaN(playedAt.getTime())) {
+    return { status: 'error', message: 'Date de rencontre invalide.' }
+  }
+
+  try {
+    const actor = await requireMatchManager(parsed.data.matchId)
+
+    const before = await db.match.findUnique({
+      where: { id: parsed.data.matchId },
+      select: { seasonId: true, playedAt: true, locksAt: true },
+    })
+
+    if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
+
+    await db.match.update({
+      where: { id: parsed.data.matchId },
+      data: { playedAt, locksAt: playedAt },
+    })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'MATCH_DATE_CHANGED',
+        entity: 'Match',
+        entityId: parsed.data.matchId,
+        before: {
+          playedAt: before.playedAt.toISOString(),
+          locksAt: before.locksAt.toISOString(),
+        },
+        after: {
+          playedAt: playedAt.toISOString(),
+          locksAt: playedAt.toISOString(),
+        },
+      },
+    })
+
+    revalidatePath('/admin')
+    revalidatePath('/admin/manage')
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(parsed.data.matchId))
+
+    return {
+      status: 'saved',
+      message:
+        'Date mise à jour. Les pronostics ferment désormais au coup d’envoi.',
+    }
   } catch (error) {
     return toErrorState(error)
   }

@@ -6,7 +6,8 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
-import { scoreField } from '@/lib/predictions/score-field'
+import { scoreFieldFor } from '@/lib/predictions/score-field'
+import { getMaxScore } from '@/lib/settings/queries'
 
 /**
  * Submitting or editing a prediction.
@@ -18,11 +19,18 @@ import { scoreField } from '@/lib/predictions/score-field'
  * is the actual rule (PLAN.md § Locking).
  */
 
-const predictionSchema = z.object({
-  matchId: z.string().min(1),
-  homeScore: scoreField,
-  awayScore: scoreField,
-})
+/**
+ * Built per call, not once at module load: the cap is an admin setting, so a
+ * schema frozen at import time would keep enforcing the value the server
+ * happened to boot with. The `max` attribute on the inputs is a courtesy —
+ * this is the rule.
+ */
+const predictionSchemaFor = (maxScore: number) =>
+  z.object({
+    matchId: z.string().min(1),
+    homeScore: scoreFieldFor(maxScore),
+    awayScore: scoreFieldFor(maxScore),
+  })
 
 export type PredictionState =
   | { status: 'idle' }
@@ -35,7 +43,7 @@ export async function submitPrediction(
 ): Promise<PredictionState> {
   const user = await requireOnboardedUser()
 
-  const parsed = predictionSchema.safeParse({
+  const parsed = predictionSchemaFor(await getMaxScore()).safeParse({
     matchId: formData.get('matchId'),
     homeScore: formData.get('homeScore'),
     awayScore: formData.get('awayScore'),

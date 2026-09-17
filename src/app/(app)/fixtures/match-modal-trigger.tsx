@@ -14,7 +14,16 @@ import { PredictionForm } from './[matchId]/prediction-form'
  * to the fixture's own page — betting on a match is a two-tap action
  * (open, type the score), not a page visit.
  */
-export function MatchModalTrigger({ match, now }: { match: MatchCardData; now: Date }) {
+export function MatchModalTrigger({
+  match,
+  now,
+  maxScore,
+}: {
+  match: MatchCardData
+  now: Date
+  /** The admin-set score cap, read once by the page and passed down. */
+  maxScore: number
+}) {
   const [open, setOpen] = useState(false)
   const [closeRequest, setCloseRequest] = useState(0)
   const showToast = useToast()
@@ -61,6 +70,7 @@ export function MatchModalTrigger({ match, now }: { match: MatchCardData; now: D
                 homeTeamName={match.homeTeam.name}
                 awayTeamName={match.awayTeam.name}
                 prediction={prediction}
+                maxScore={maxScore}
                 onSaved={() => {
                   showToast('Pronostic enregistré')
                   setCloseRequest((count) => count + 1)

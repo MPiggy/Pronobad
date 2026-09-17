@@ -6,11 +6,13 @@ import { db } from '@/lib/db'
 import { ForbiddenError, NotFoundError, requireSuperadmin } from '@/lib/auth/guards'
 import { CURRENT_SEASON_TAG, getCurrentSeason } from '@/lib/seasons'
 import { matchesTag } from '@/lib/predictions/queries'
+import { DEFAULT_MAX_SCORE, maxScoreField } from '@/lib/predictions/score-field'
+import { SETTINGS_ID, SETTINGS_TAG } from '@/lib/settings/queries'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { Prisma } from '@/generated/prisma/client'
 
 /**
- * Structure mutations: seasons, teams, and fixtures.
+ * Structure mutations: seasons, teams, fixtures, and competition settings.
  *
  * Kept apart from `../actions.ts`, which handles the day-to-day of a season
  * already in place (results, deadlines). Everything here changes what exists
@@ -322,6 +324,109 @@ export async function deleteTeam(
     updateTag(matchesTag(team.seasonId))
 
     return { status: 'saved', message: `Équipe « ${team.name} » supprimée.` }
+  } catch (error) {
+    return toErrorState(error)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Competition settings
+
+const settingsSchema = z.object({
+  maxScore: maxScoreField,
+})
+
+/**
+ * Sets the highest score a fixture can be given.
+ *
+ * Validation only ever runs on new entries, so lowering the cap leaves any
+ * result or prediction already above it standing — deleting or clamping them
+ * would rewrite the leaderboard to fix a typo in a setting. The count of those
+ * rows is reported back instead, so an admin lowering the cap by mistake finds
+ * out immediately rather than from a member.
+ */
+export async function updateMaxScore(
+  _prevState: ManageState,
+  formData: FormData,
+): Promise<ManageState> {
+  const parsed = settingsSchema.safeParse({
+    maxScore: formData.get('maxScore'),
+  })
+
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: parsed.error.issues[0]?.message ?? 'Valeur invalide.',
+    }
+  }
+
+  const { maxScore } = parsed.data
+
+  try {
+    const actor = await requireSuperadmin()
+
+    // Read straight through, not via the cached `getMaxScore`: this value is
+    // what the audit row records as the previous setting, and a stale read
+    // would make the log say the cap moved from a value it never held.
+    const current = await db.appSettings.findUnique({
+      where: { id: SETTINGS_ID },
+      select: { maxScore: true },
+    })
+
+    const before = current?.maxScore ?? DEFAULT_MAX_SCORE
+
+    if (before === maxScore) {
+      return { status: 'saved', message: `Maximum inchangé (${maxScore} points).` }
+    }
+
+    await db.appSettings.upsert({
+      where: { id: SETTINGS_ID },
+      create: { id: SETTINGS_ID, maxScore },
+      update: { maxScore },
+    })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'MAX_SCORE_CHANGED',
+        entity: 'AppSettings',
+        entityId: SETTINGS_ID,
+        before: { maxScore: before },
+        after: { maxScore },
+      },
+    })
+
+    revalidateAdminPages()
+    updateTag(SETTINGS_TAG)
+
+    if (maxScore > before) {
+      return { status: 'saved', message: `Maximum porté à ${maxScore} points.` }
+    }
+
+    // Only worth counting when the cap went down — raising it can't strand
+    // anything.
+    const [staleResults, stalePredictions] = await Promise.all([
+      db.match.count({
+        where: {
+          OR: [{ homeScore: { gt: maxScore } }, { awayScore: { gt: maxScore } }],
+        },
+      }),
+      db.prediction.count({
+        where: {
+          OR: [{ homeScore: { gt: maxScore } }, { awayScore: { gt: maxScore } }],
+        },
+      }),
+    ])
+
+    const stale = staleResults + stalePredictions
+
+    return {
+      status: 'saved',
+      message:
+        stale === 0
+          ? `Maximum abaissé à ${maxScore} points.`
+          : `Maximum abaissé à ${maxScore} points. ${stale} score${stale > 1 ? 's' : ''} déjà saisi${stale > 1 ? 's' : ''} dépasse${stale > 1 ? 'nt' : ''} cette limite et reste${stale > 1 ? 'nt' : ''} inchangé${stale > 1 ? 's' : ''}.`,
+    }
   } catch (error) {
     return toErrorState(error)
   }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getNextMatchForUser } from '@/lib/predictions/queries'
+import { getMaxScore } from '@/lib/settings/queries'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonShell } from '@/components/skeleton'
 import { NextMatchHero } from '../home/next-match-hero'
@@ -55,12 +56,15 @@ async function FixturesContent() {
   }
 
   const now = new Date()
-  const match = await getNextMatchForUser({ seasonId: season.id, userId: user.id, now })
+  const [match, maxScore] = await Promise.all([
+    getNextMatchForUser({ seasonId: season.id, userId: user.id, now }),
+    getMaxScore(),
+  ])
 
   return (
     <PageShell title="Rencontres" subtitle={season.name}>
       {match ? (
-        <NextMatchHero match={match} now={now} />
+        <NextMatchHero match={match} now={now} maxScore={maxScore} />
       ) : (
         <EmptyState
           icon="🏸"

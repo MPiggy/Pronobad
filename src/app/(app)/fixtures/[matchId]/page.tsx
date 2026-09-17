@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { Clock } from 'lucide-react'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { getMatchForUser } from '@/lib/predictions/queries'
+import { getMaxScore } from '@/lib/settings/queries'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
 import {
@@ -50,7 +51,10 @@ async function MatchContent({
   const { matchId } = await params
   const user = await requireOnboardedUser()
 
-  const match = await getMatchForUser({ matchId, userId: user.id })
+  const [match, maxScore] = await Promise.all([
+    getMatchForUser({ matchId, userId: user.id }),
+    getMaxScore(),
+  ])
 
   if (!match) notFound()
 
@@ -137,6 +141,7 @@ async function MatchContent({
               homeTeamName={match.homeTeam.name}
               awayTeamName={match.awayTeam.name}
               prediction={prediction}
+              maxScore={maxScore}
             />
           </section>
         )}

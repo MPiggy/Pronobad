@@ -29,6 +29,27 @@ model Season {
   @@index([isCurrent])
 }
 
+/// Competition-wide settings, held as a single row (`id = "singleton"`).
+///
+/// A typed one-row table rather than a key/value store: the values are few and
+/// each has its own type, so a `value String` column would buy nothing but
+/// parsing and a class of runtime failure that the schema can prevent outright.
+///
+/// The row is created on first save, never by a migration — every read falls
+/// back to the code default, so a database without it behaves like a fresh one
+/// rather than crashing.
+model AppSettings {
+  id String @id
+
+  /// The highest score either side can be given, in a member's prediction and
+  /// in an official result alike. A French interclub fixture is played over 8
+  /// rubbers, which is the default; divisions that use another format change
+  /// it here rather than in code.
+  maxScore Int @default(8)
+
+  updatedAt DateTime @updatedAt
+}
+
 model Team {
   id       String @id @default(cuid())
   name     String

@@ -34,10 +34,12 @@ function ScoreInput({
   name,
   label,
   defaultValue,
+  maxScore,
 }: {
   name: string
   label: string
   defaultValue?: number
+  maxScore: number
 }) {
   return (
     <div className="flex-1">
@@ -51,7 +53,7 @@ function ScoreInput({
         inputMode="numeric"
         required
         min={0}
-        max={20}
+        max={maxScore}
         defaultValue={defaultValue}
         placeholder="0"
         className="w-full rounded-xl border border-line bg-sheet px-4 py-3 text-center text-2xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
@@ -65,12 +67,18 @@ export function PredictionForm({
   homeTeamName,
   awayTeamName,
   prediction,
+  maxScore,
   onSaved,
 }: {
   matchId: string
   homeTeamName: string
   awayTeamName: string
   prediction: { homeScore: number; awayScore: number } | null
+  /**
+   * The admin-set cap, read on the server and passed down. Only bounds the
+   * inputs — the action re-reads it and is what actually enforces it.
+   */
+  maxScore: number
   /** Called once, right after a submission lands as `saved`. */
   onSaved?: () => void
 }) {
@@ -94,6 +102,7 @@ export function PredictionForm({
           name="homeScore"
           label={homeTeamName}
           defaultValue={prediction?.homeScore}
+          maxScore={maxScore}
         />
         <span aria-hidden className="pb-3 text-lg font-bold text-ink-soft">
           –
@@ -102,6 +111,7 @@ export function PredictionForm({
           name="awayScore"
           label={awayTeamName}
           defaultValue={prediction?.awayScore}
+          maxScore={maxScore}
         />
       </div>
 

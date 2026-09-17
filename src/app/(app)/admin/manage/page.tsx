@@ -3,9 +3,16 @@ import { forbidden } from 'next/navigation'
 import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
+import { getMaxScore } from '@/lib/settings/queries'
 import { Suspense, type ReactNode } from 'react'
 import { EmptyState, PageShell } from '@/components/page-shell'
-import { MatchForm, SeasonForm, TeamEditForm, TeamForm } from './manage-forms'
+import {
+  MatchForm,
+  SeasonForm,
+  SettingsForm,
+  TeamEditForm,
+  TeamForm,
+} from './manage-forms'
 
 export const metadata: Metadata = {
   title: 'Structure — BetClichy',
@@ -52,7 +59,10 @@ async function ManageContent() {
 
   if (!actor.isSuperadmin) forbidden()
 
-  const season = await getCurrentSeason()
+  const [season, maxScore] = await Promise.all([
+    getCurrentSeason(),
+    getMaxScore(),
+  ])
 
   const teams = season
     ? await db.team.findMany({
@@ -74,6 +84,15 @@ async function ManageContent() {
       }
     >
       <div className="space-y-8">
+        <section>
+          <SectionHeading aside={`${maxScore} pts max`}>Réglages</SectionHeading>
+          <Card>
+            <div className="p-4">
+              <SettingsForm maxScore={maxScore} />
+            </div>
+          </Card>
+        </section>
+
         <section>
           <SectionHeading aside={season ? `En cours : ${season.name}` : undefined}>
             Saison

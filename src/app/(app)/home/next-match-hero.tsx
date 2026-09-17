@@ -20,7 +20,16 @@ import type { MatchCardData } from '@/components/match-card'
  * app is reachable from the bottom nav, so this screen doesn't need to be
  * a list too.
  */
-export function NextMatchHero({ match, now }: { match: MatchCardData; now: Date }) {
+export function NextMatchHero({
+  match,
+  now,
+  maxScore,
+}: {
+  match: MatchCardData
+  now: Date
+  /** The admin-set score cap, read once by the page and passed down. */
+  maxScore: number
+}) {
   const [open, setOpen] = useState(false)
   const [closeRequest, setCloseRequest] = useState(0)
   const showToast = useToast()
@@ -102,6 +111,7 @@ export function NextMatchHero({ match, now }: { match: MatchCardData; now: Date 
                 homeTeamName={match.homeTeam.name}
                 awayTeamName={match.awayTeam.name}
                 prediction={prediction}
+                maxScore={maxScore}
                 onSaved={() => {
                   showToast('Pronostic enregistré')
                   setCloseRequest((count) => count + 1)

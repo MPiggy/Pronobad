@@ -7,13 +7,15 @@ import {
   createSeason,
   createTeam,
   deleteTeam,
+  updateMaxScore,
   updateTeam,
   type ManageState,
 } from './actions'
+import { MAX_MAX_SCORE, MIN_MAX_SCORE } from '@/lib/predictions/score-field'
 
 /**
- * Creation forms for the structure page: season, team, fixture. One
- * `useActionState` per form, so an error in one does not clear or disturb
+ * Forms for the structure page: competition settings, season, team, fixture.
+ * One `useActionState` per form, so an error in one does not clear or disturb
  * the others.
  */
 
@@ -58,6 +60,50 @@ function SubmitButton({ children }: { children: string }) {
 const labelClass = 'mb-1.5 block text-xs font-medium text-ink-soft'
 const inputClass =
   'w-full rounded-md border border-line bg-sheet px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court'
+
+/**
+ * The score cap, applied to every prediction and every official result.
+ *
+ * Lives on this page rather than next to a fixture because it is one value for
+ * the whole competition — a fixture-by-fixture field would be twenty chances
+ * to set it inconsistently.
+ */
+export function SettingsForm({ maxScore }: { maxScore: number }) {
+  const [state, formAction] = useActionState<ManageState, FormData>(
+    updateMaxScore,
+    IDLE,
+  )
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div>
+        <label htmlFor="settings-max-score" className={labelClass}>
+          Points maximum par équipe
+        </label>
+        <input
+          id="settings-max-score"
+          name="maxScore"
+          type="number"
+          inputMode="numeric"
+          required
+          min={MIN_MAX_SCORE}
+          max={MAX_MAX_SCORE}
+          defaultValue={maxScore}
+          className={`num ${inputClass}`}
+        />
+      </div>
+
+      <p className="text-xs leading-relaxed text-ink-soft">
+        Le nombre de rencontres individuelles d’un match d’interclub — 8 en
+        championnat de France. Borne les pronostics et les résultats. Les scores
+        déjà saisis ne sont pas modifiés.
+      </p>
+
+      <StateMessage state={state} />
+      <SubmitButton>Enregistrer le maximum</SubmitButton>
+    </form>
+  )
+}
 
 export function SeasonForm() {
   const [state, formAction] = useActionState<ManageState, FormData>(

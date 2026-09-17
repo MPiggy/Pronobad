@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMatchesForUser } from '@/lib/predictions/queries'
+import { getMaxScore } from '@/lib/settings/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
@@ -58,10 +59,10 @@ async function HomeContent() {
     )
   }
 
-  const matches = await getMatchesForUser({
-    seasonId: season.id,
-    userId: user.id,
-  })
+  const [matches, maxScore] = await Promise.all([
+    getMatchesForUser({ seasonId: season.id, userId: user.id }),
+    getMaxScore(),
+  ])
 
   // One timestamp for the whole render: computing `new Date()` per card would
   // let two cards disagree about whether the same instant is past lock.
@@ -105,7 +106,7 @@ async function HomeContent() {
               <ul className="space-y-3">
                 {open.map((match) => (
                   <li key={match.id}>
-                    <MatchModalTrigger match={match} now={now} />
+                    <MatchModalTrigger match={match} now={now} maxScore={maxScore} />
                   </li>
                 ))}
               </ul>
@@ -123,7 +124,7 @@ async function HomeContent() {
               <ul className="space-y-3">
                 {closed.map((match) => (
                   <li key={match.id}>
-                    <MatchModalTrigger match={match} now={now} />
+                    <MatchModalTrigger match={match} now={now} maxScore={maxScore} />
                   </li>
                 ))}
               </ul>

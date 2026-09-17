@@ -5,14 +5,15 @@ import { useFormStatus } from 'react-dom'
 import {
   enterResult,
   updateLocksAt,
+  updateMatchDate,
   withdrawResult,
   type AdminState,
 } from './actions'
 
 /**
- * Result entry and deadline editing for one fixture.
+ * Result entry, rescheduling and deadline editing for one fixture.
  *
- * Both forms live behind a `<details>` so a season of fixtures stays scannable
+ * Every form lives behind a `<details>` so a season of fixtures stays scannable
  * — an admin opens the one they came for rather than scrolling past twenty
  * expanded forms.
  */
@@ -67,12 +68,14 @@ function ResultForm({
   awayTeamName,
   homeScore,
   awayScore,
+  maxScore,
 }: {
   matchId: string
   homeTeamName: string
   awayTeamName: string
   homeScore: number | null
   awayScore: number | null
+  maxScore: number
 }) {
   const [state, formAction] = useActionState<AdminState, FormData>(enterResult, {
     status: 'idle',
@@ -101,13 +104,18 @@ function ResultForm({
               inputMode="numeric"
               required
               min={0}
-              max={20}
+              max={maxScore}
               defaultValue={field.value ?? undefined}
               className="w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-center text-xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
             />
           </div>
         ))}
       </div>
+
+      <p className="text-xs text-ink-soft">
+        Maximum {maxScore} point{maxScore > 1 ? 's' : ''} par équipe — modifiable
+        dans Structure.
+      </p>
 
       <StateMessage state={state} />
 
@@ -129,6 +137,51 @@ function WithdrawForm({ matchId }: { matchId: string }) {
       <input type="hidden" name="matchId" value={matchId} />
       <StateMessage state={state} />
       <SubmitButton variant="secondary">Retirer le résultat</SubmitButton>
+    </form>
+  )
+}
+
+function DateForm({
+  matchId,
+  defaultValue,
+}: {
+  matchId: string
+  defaultValue: string
+}) {
+  const [state, formAction] = useActionState<AdminState, FormData>(
+    updateMatchDate,
+    { status: 'idle' },
+  )
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <input type="hidden" name="matchId" value={matchId} />
+
+      <div>
+        <label
+          htmlFor={`${matchId}-playedAt`}
+          className="mb-1.5 block text-xs font-medium text-ink-soft"
+        >
+          Date de la rencontre (heure de Paris)
+        </label>
+        <input
+          id={`${matchId}-playedAt`}
+          name="playedAt"
+          type="datetime-local"
+          required
+          defaultValue={defaultValue}
+          className="w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+        />
+      </div>
+
+      <p className="text-xs text-ink-soft">
+        La fermeture des pronostics suit la nouvelle date. Ajustez-la ci-dessous
+        si besoin.
+      </p>
+
+      <StateMessage state={state} />
+
+      <SubmitButton variant="secondary">Reprogrammer</SubmitButton>
     </form>
   )
 }
@@ -179,15 +232,21 @@ export function MatchAdminForm({
   awayTeamName,
   homeScore,
   awayScore,
+  playedAtLocal,
   locksAtLocal,
+  maxScore,
 }: {
   matchId: string
   homeTeamName: string
   awayTeamName: string
   homeScore: number | null
   awayScore: number | null
+  /** `playedAt` pre-formatted as a Paris `datetime-local` value by the server. */
+  playedAtLocal: string
   /** `locksAt` pre-formatted as a Paris `datetime-local` value by the server. */
   locksAtLocal: string
+  /** The admin-set score cap, bounding the result inputs. */
+  maxScore: number
 }) {
   const hasResult = homeScore !== null && awayScore !== null
 
@@ -205,9 +264,12 @@ export function MatchAdminForm({
           awayTeamName={awayTeamName}
           homeScore={homeScore}
           awayScore={awayScore}
+          maxScore={maxScore}
         />
 
         {hasResult && <WithdrawForm matchId={matchId} />}
+
+        <DateForm matchId={matchId} defaultValue={playedAtLocal} />
 
         <LocksAtForm matchId={matchId} defaultValue={locksAtLocal} />
       </div>

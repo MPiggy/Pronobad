@@ -5,6 +5,7 @@ import { forbidden } from 'next/navigation'
 import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
+import { getMaxScore } from '@/lib/settings/queries'
 import { isLocked } from '@/lib/predictions/locking'
 import {
   formatMatchDateTime,
@@ -76,6 +77,8 @@ async function AdminContent() {
       </PageShell>
     )
   }
+
+  const maxScore = await getMaxScore()
 
   const matches = await db.match.findMany({
     where: { seasonId: season.id },
@@ -163,7 +166,9 @@ async function AdminContent() {
                   awayTeamName={match.awayTeam.name}
                   homeScore={match.homeScore}
                   awayScore={match.awayScore}
+                  playedAtLocal={toParisDateTimeLocal(match.playedAt)}
                   locksAtLocal={toParisDateTimeLocal(match.locksAt)}
+                  maxScore={maxScore}
                 />
               </li>
             )
