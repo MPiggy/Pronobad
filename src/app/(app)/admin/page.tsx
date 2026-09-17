@@ -169,6 +169,7 @@ async function AdminContent() {
                   playedAtLocal={toParisDateTimeLocal(match.playedAt)}
                   locksAtLocal={toParisDateTimeLocal(match.locksAt)}
                   maxScore={maxScore}
+                  predictionCount={match._count.predictions}
                 />
               </li>
             )

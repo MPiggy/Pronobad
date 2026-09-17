@@ -288,6 +288,110 @@ export async function updateLocksAt(
   }
 }
 
+/**
+ * Deletes a fixture, and with it every prediction on it and every point those
+ * predictions earned.
+ *
+ * The points go through the schema's `onDelete: Cascade` chain — Match →
+ * Prediction → PredictionScore — rather than a hand-rolled sweep, so there is
+ * no window in which a prediction survives the fixture it belongs to, or a
+ * frozen score survives its prediction. Leaving either behind would keep
+ * phantom points on the leaderboard for a fixture that no longer exists.
+ *
+ * What is lost is counted *before* the delete and written to the AuditLog:
+ * `entityId` is a plain string with no foreign key, so the audit row outlives
+ * the fixture and stays the only record that it ever existed.
+ */
+export async function deleteMatch(
+  _prevState: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const matchId = z.string().min(1).safeParse(formData.get('matchId'))
+
+  if (!matchId.success) {
+    return { status: 'error', message: 'Rencontre invalide.' }
+  }
+
+  try {
+    const actor = await requireMatchManager(matchId.data)
+
+    const before = await db.match.findUnique({
+      where: { id: matchId.data },
+      select: {
+        seasonId: true,
+        round: true,
+        playedAt: true,
+        homeScore: true,
+        awayScore: true,
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
+    })
+
+    if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
+
+    const label = `${before.homeTeam.name} — ${before.awayTeam.name}`
+
+    // Counting and deleting in one transaction: a prediction filed between the
+    // count and the delete would otherwise vanish without appearing in the
+    // audit row, which is the only trace left once the fixture is gone.
+    const { predictions, points } = await db.$transaction(async (tx) => {
+      const [predictions, awarded] = await Promise.all([
+        tx.prediction.count({ where: { matchId: matchId.data } }),
+        tx.predictionScore.aggregate({
+          where: { prediction: { matchId: matchId.data } },
+          _sum: { points: true },
+          _count: true,
+        }),
+      ])
+
+      await tx.match.delete({ where: { id: matchId.data } })
+
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'MATCH_DELETED',
+          entity: 'Match',
+          entityId: matchId.data,
+          before: {
+            seasonId: before.seasonId,
+            round: before.round,
+            playedAt: before.playedAt.toISOString(),
+            homeTeam: before.homeTeam.name,
+            awayTeam: before.awayTeam.name,
+            homeScore: before.homeScore,
+            awayScore: before.awayScore,
+            deletedPredictions: predictions,
+            deletedScores: awarded._count,
+            deletedPoints: awarded._sum.points ?? 0,
+          },
+        },
+      })
+
+      return { predictions, points: awarded._sum.points ?? 0 }
+    })
+
+    revalidatePath('/admin')
+    revalidatePath('/admin/manage')
+    revalidatePath('/profile')
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(matchId.data))
+    // The frozen scores went with it, so the leaderboard is now wrong until
+    // this is busted.
+    updateTag(leaderboardTag(before.seasonId))
+
+    return {
+      status: 'saved',
+      message:
+        predictions === 0
+          ? `Rencontre « ${label} » supprimée.`
+          : `Rencontre « ${label} » supprimée, avec ${predictions} pronostic${predictions > 1 ? 's' : ''} et ${points} point${points > 1 ? 's' : ''} au classement.`,
+    }
+  } catch (error) {
+    return toErrorState(error)
+  }
+}
+
 const playedAtSchema = z.object({
   matchId: z.string().min(1),
   // Same `datetime-local` caveat as `locksAt` above: no zone is posted, so the

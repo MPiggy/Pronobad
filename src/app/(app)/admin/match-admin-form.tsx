@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import {
+  deleteMatch,
   enterResult,
   updateLocksAt,
   updateMatchDate,
@@ -141,6 +142,63 @@ function WithdrawForm({ matchId }: { matchId: string }) {
   )
 }
 
+/**
+ * Deleting a fixture, and with it every prediction and every point earned on
+ * it.
+ *
+ * The confirmation names what is actually at stake — how many predictions, and
+ * whether points are already on the leaderboard — because "Supprimer cette
+ * rencontre ?" gives an admin nothing to weigh, and this is not undoable.
+ */
+function DeleteMatchForm({
+  matchId,
+  label,
+  predictionCount,
+  hasResult,
+}: {
+  matchId: string
+  label: string
+  predictionCount: number
+  hasResult: boolean
+}) {
+  const [state, formAction] = useActionState<AdminState, FormData>(
+    deleteMatch,
+    { status: 'idle' },
+  )
+
+  const consequence =
+    predictionCount === 0
+      ? 'Aucun pronostic n’a été enregistré dessus.'
+      : `Ses ${predictionCount} pronostic${predictionCount > 1 ? 's' : ''}${
+          hasResult ? ' et les points déjà attribués au classement' : ''
+        } seront aussi supprimé${predictionCount > 1 ? 's' : ''}.`
+
+  return (
+    <form
+      action={formAction}
+      className="space-y-2"
+      onSubmit={(event) => {
+        if (
+          !confirm(
+            `Supprimer « ${label} » ? ${consequence} Cette action est irréversible.`,
+          )
+        ) {
+          event.preventDefault()
+        }
+      }}
+    >
+      <input type="hidden" name="matchId" value={matchId} />
+      <StateMessage state={state} />
+      <button
+        type="submit"
+        className="w-full rounded-xl border border-loss/40 bg-transparent px-4 py-3 text-sm font-semibold text-loss transition-colors hover:bg-loss/10"
+      >
+        Supprimer la rencontre
+      </button>
+    </form>
+  )
+}
+
 function DateForm({
   matchId,
   defaultValue,
@@ -235,6 +293,7 @@ export function MatchAdminForm({
   playedAtLocal,
   locksAtLocal,
   maxScore,
+  predictionCount,
 }: {
   matchId: string
   homeTeamName: string
@@ -247,6 +306,8 @@ export function MatchAdminForm({
   locksAtLocal: string
   /** The admin-set score cap, bounding the result inputs. */
   maxScore: number
+  /** How many predictions deletion would take with it, for the confirmation. */
+  predictionCount: number
 }) {
   const hasResult = homeScore !== null && awayScore !== null
 
@@ -272,6 +333,15 @@ export function MatchAdminForm({
         <DateForm matchId={matchId} defaultValue={playedAtLocal} />
 
         <LocksAtForm matchId={matchId} defaultValue={locksAtLocal} />
+
+        <div className="border-t border-line pt-5">
+          <DeleteMatchForm
+            matchId={matchId}
+            label={`${homeTeamName} — ${awayTeamName}`}
+            predictionCount={predictionCount}
+            hasResult={hasResult}
+          />
+        </div>
       </div>
     </details>
   )

@@ -167,6 +167,16 @@ the access control.
 | Score cap (`AppSettings.maxScore`) | `/admin/manage` → Réglages | Highest score either side can be given. Defaults to **8**, the rubber count of a standard interclub fixture. One value for the whole competition |
 | Fixture date (`playedAt`) | `/admin` → Gérer cette rencontre | Rescheduling. `locksAt` always follows the new date |
 | Deadline (`locksAt`) | `/admin` → Gérer cette rencontre | Set it *after* rescheduling, or the reschedule overwrites it |
+| Delete a fixture | `/admin` → Gérer cette rencontre | Takes its predictions and their points with it. Not undoable |
+
+Deleting a fixture relies on the schema's `onDelete: Cascade` chain — Match →
+Prediction → PredictionScore, real `ON DELETE CASCADE` constraints in Postgres,
+not an application-level sweep — so no prediction can outlive its fixture and no
+frozen score can outlive its prediction. The leaderboard reads those score rows,
+so it drops the points as soon as `leaderboardTag` is busted. What was lost
+(predictions, scores, total points) is counted in the same transaction and
+written to the AuditLog, whose `entityId` has no foreign key and therefore
+survives as the only record the fixture ever existed.
 
 The score cap is read at write time by both the prediction and the result
 actions, so the two can never disagree about what a legal score is. Lowering it
