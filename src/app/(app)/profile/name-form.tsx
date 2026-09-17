@@ -31,7 +31,7 @@ export function NameForm({ name }: { name: string }) {
           <span className="hidden group-open:inline">Fermer</span>
         </summary>
 
-        <div className="mt-3 border-t border-line pt-3">
+        <div className="mt-3">
           <EditForm name={name} />
         </div>
       </details>

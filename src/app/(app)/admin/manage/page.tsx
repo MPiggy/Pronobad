@@ -1,47 +1,35 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { forbidden } from 'next/navigation'
 import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMaxScore } from '@/lib/settings/queries'
 import { Suspense, type ReactNode } from 'react'
-import { EmptyState, PageShell } from '@/components/page-shell'
+import { EmptyState, PageShell, SectionHeading } from '@/components/page-shell'
 import {
-  MatchForm,
-  SeasonForm,
+  NewSeasonButton,
+  NewTeamButton,
   SettingsForm,
-  TeamEditForm,
-  TeamForm,
+  TeamCard,
 } from './manage-forms'
 
 export const metadata: Metadata = {
-  title: 'Structure — BetClichy',
+  title: 'Réglages — BetClichy',
 }
 
 /** Card container in the revamped visual style, local to this page. */
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-sheet">{children}</div>
-  )
-}
-
-function SectionHeading({
-  aside,
-  children,
-}: {
-  aside?: string
-  children: ReactNode
-}) {
-  return (
-    <div className="mb-2.5 flex items-baseline justify-between gap-3">
-      <h2 className="text-sm font-semibold text-shuttle-text">{children}</h2>
-      {aside && <p className="shrink-0 text-xs text-shuttle-text-soft">{aside}</p>}
-    </div>
+    <div className="rounded-2xl border border-line bg-sheet p-4">{children}</div>
   )
 }
 
 /**
- * Superadmin structure page: seasons, teams, fixtures.
+ * Superadmin settings: the competition format, the season, its teams.
+ *
+ * Fixtures are not here — they live on the admin page with their results,
+ * where the season's calendar is filled in and kept up to date.
  *
  * The superadmin check reads the session cookie, so the whole page is
  * runtime-bound — Suspense is what lets the route still prerender a shell.
@@ -72,40 +60,48 @@ async function ManageContent() {
       })
     : []
 
-  const teamOptions = teams.map((team) => ({ id: team.id, name: team.name }))
-
   return (
     <PageShell
-      title="Structure"
+      title="Réglages"
       subtitle={
         season
-          ? `Équipes et rencontres · ${season.name}`
+          ? `Format, saison et équipes · ${season.name}`
           : 'Commencez par créer une saison.'
+      }
+      action={
+        <Link
+          href="/admin"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-line bg-sheet px-3 text-xs font-semibold text-court-dark transition-colors active:bg-shuttle/5"
+        >
+          Rencontres
+        </Link>
       }
     >
       <div className="space-y-8">
         <section>
-          <SectionHeading aside={`${maxScore} pts max`}>Réglages</SectionHeading>
-          <Card>
-            <div className="p-4">
-              <SettingsForm maxScore={maxScore} />
-            </div>
-          </Card>
-        </section>
-
-        <section>
-          <SectionHeading aside={season ? `En cours : ${season.name}` : undefined}>
-            Saison
+          <SectionHeading aside={`${maxScore} match${maxScore > 1 ? 's' : ''}`}>
+            Format
           </SectionHeading>
           <Card>
-            <div className="p-4">
-              <SeasonForm />
-            </div>
+            <SettingsForm maxScore={maxScore} />
           </Card>
         </section>
 
         <section>
-          <SectionHeading aside={teams.length > 0 ? `${teams.length}` : undefined}>
+          <SectionHeading>Saison</SectionHeading>
+          <div className="space-y-2.5">
+            {season && (
+              <Card>
+                <p className="text-xs font-medium text-ink-soft">En cours</p>
+                <p className="mt-0.5 font-medium text-ink">{season.name}</p>
+              </Card>
+            )}
+            <NewSeasonButton currentSeasonName={season?.name} />
+          </div>
+        </section>
+
+        <section>
+          <SectionHeading aside={teams.length > 0 ? teams.length : undefined}>
             Équipes
           </SectionHeading>
 
@@ -116,55 +112,17 @@ async function ManageContent() {
               body="Créez d’abord une saison : chaque équipe y appartient."
             />
           ) : (
-            <>
+            <div className="space-y-2.5">
               {teams.length > 0 && (
-                <ul className="mb-2.5 space-y-2.5">
+                <ul className="space-y-2.5">
                   {teams.map((team) => (
-                    <li key={team.id}>
-                      <Card>
-                        <div className="px-4 py-3">
-                          <div className="flex items-baseline justify-between gap-3">
-                            <p className="min-w-0 truncate text-sm font-medium text-ink">
-                              {team.name}
-                            </p>
-                            <p className="shrink-0 text-xs text-ink-soft">
-                              {team.division}
-                            </p>
-                          </div>
-                          <div className="mt-2">
-                            <TeamEditForm team={team} />
-                          </div>
-                        </div>
-                      </Card>
-                    </li>
+                    <TeamCard key={team.id} team={team} />
                   ))}
                 </ul>
               )}
 
-              <Card>
-                <div className="p-4">
-                  <TeamForm />
-                </div>
-              </Card>
-            </>
-          )}
-        </section>
-
-        <section>
-          <SectionHeading>Nouvelle rencontre</SectionHeading>
-
-          {teams.length < 2 ? (
-            <EmptyState
-              icon="🏸"
-              title="Pas assez d’équipes"
-              body="Il faut au moins deux équipes dans la saison en cours pour créer une rencontre."
-            />
-          ) : (
-            <Card>
-              <div className="p-4">
-                <MatchForm teams={teamOptions} />
-              </div>
-            </Card>
+              <NewTeamButton />
+            </div>
           )}
         </section>
       </div>

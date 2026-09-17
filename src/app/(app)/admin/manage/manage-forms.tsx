@@ -1,86 +1,52 @@
 'use client'
 
-import { useActionState } from 'react'
-import { useFormStatus } from 'react-dom'
-import { Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Pencil, Plus } from 'lucide-react'
+import { Modal } from '@/components/modal'
+import { useToast } from '@/components/toast'
 import {
-  createMatch,
+  Field,
+  IconButton,
+  inputClass,
+  SaveBar,
+  StateMessage,
+  SubmitButton,
+  useFormAction,
+  type DeleteConfig,
+} from '@/components/form-controls'
+import type { SavedFormState } from '@/lib/form-state'
+import { MAX_MAX_SCORE, MIN_MAX_SCORE } from '@/lib/predictions/score-field'
+import {
   createSeason,
   createTeam,
   deleteTeam,
   updateMaxScore,
   updateTeam,
-  type ManageState,
 } from './actions'
-import { MAX_MAX_SCORE, MIN_MAX_SCORE } from '@/lib/predictions/score-field'
 
 /**
- * Forms for the structure page: competition settings, season, team, fixture.
+ * Forms for the settings page: competition format, season, teams.
  * One `useActionState` per form, so an error in one does not clear or disturb
  * the others.
  */
-
-export type TeamOption = { id: string; name: string }
-
-const IDLE: ManageState = { status: 'idle' }
-
-function StateMessage({ state }: { state: ManageState }) {
-  if (state.status === 'error') {
-    return (
-      <p role="alert" className="text-sm text-loss">
-        {state.message}
-      </p>
-    )
-  }
-
-  if (state.status === 'saved') {
-    return (
-      <p role="status" className="text-sm font-medium text-court-dark">
-        {state.message}
-      </p>
-    )
-  }
-
-  return null
-}
-
-function SubmitButton({ children }: { children: string }) {
-  const { pending } = useFormStatus()
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-md bg-court px-4 py-2.5 text-sm font-semibold text-ink transition-opacity active:opacity-90 disabled:opacity-60"
-    >
-      {pending ? 'Enregistrement…' : children}
-    </button>
-  )
-}
-
-const labelClass = 'mb-1.5 block text-xs font-medium text-ink-soft'
-const inputClass =
-  'w-full rounded-md border border-line bg-sheet px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court'
 
 /**
  * The competition's default number of rubbers per fixture.
  *
  * Lives on this page because it is the value every fixture inherits — setting
  * it here once beats setting it twenty times. A fixture played over a
- * different number overrides it from the admin page instead.
+ * different number overrides it in its own edit form.
  */
 export function SettingsForm({ maxScore }: { maxScore: number }) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    updateMaxScore,
-    IDLE,
-  )
+  const [state, formAction] = useFormAction(updateMaxScore)
 
   return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label htmlFor="settings-max-score" className={labelClass}>
-          Matchs par rencontre (défaut)
-        </label>
+    <form action={formAction} className="space-y-4">
+      <Field
+        id="settings-max-score"
+        label="Matchs par rencontre (défaut)"
+        hint="Le nombre de matchs joués dans une rencontre d’interclub — 8 en championnat de France. Les deux scores d’un pronostic totalisent ce nombre. Une rencontre peut le remplacer depuis sa fiche. Les scores déjà saisis ne sont pas modifiés."
+      >
         <input
           id="settings-max-score"
           name="maxScore"
@@ -92,14 +58,7 @@ export function SettingsForm({ maxScore }: { maxScore: number }) {
           defaultValue={maxScore}
           className={`num ${inputClass}`}
         />
-      </div>
-
-      <p className="text-xs leading-relaxed text-ink-soft">
-        Le nombre de matchs joués dans une rencontre d’interclub — 8 en
-        championnat de France. Les deux scores d’un pronostic doivent totaliser
-        ce nombre. Chaque rencontre peut le remplacer depuis l’onglet Admin. Les
-        scores déjà saisis ne sont pas modifiés.
-      </p>
+      </Field>
 
       <StateMessage state={state} />
       <SubmitButton>Enregistrer le format</SubmitButton>
@@ -107,18 +66,35 @@ export function SettingsForm({ maxScore }: { maxScore: number }) {
   )
 }
 
-export function SeasonForm() {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    createSeason,
-    IDLE,
-  )
+/**
+ * Creating a season makes it the current one, which swaps every screen in
+ * the app over to it — hence the confirmation when one is already running.
+ */
+function SeasonForm({
+  currentSeasonName,
+  onSaved,
+}: {
+  currentSeasonName?: string
+  onSaved: (state: SavedFormState) => void
+}) {
+  const [state, formAction] = useFormAction(createSeason, onSaved)
 
   return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label htmlFor="season-name" className={labelClass}>
-          Nom de la saison
-        </label>
+    <form
+      action={formAction}
+      className="space-y-4"
+      onSubmit={(event) => {
+        if (
+          currentSeasonName &&
+          !confirm(
+            `Créer cette saison et la rendre courante ? « ${currentSeasonName} » ne sera plus la saison en cours : rencontres, pronostics et classement basculeront sur la nouvelle.`,
+          )
+        ) {
+          event.preventDefault()
+        }
+      }}
+    >
+      <Field id="season-name" label="Nom de la saison">
         <input
           id="season-name"
           name="name"
@@ -127,53 +103,51 @@ export function SeasonForm() {
           placeholder="Saison 2026-2027"
           className={inputClass}
         />
-      </div>
+      </Field>
 
       <div className="flex gap-3">
-        <div className="flex-1">
-          <label htmlFor="season-starts" className={labelClass}>
-            Début
-          </label>
-          <input
-            id="season-starts"
-            name="startsAt"
-            type="date"
-            required
-            className={inputClass}
-          />
+        <div className="min-w-0 flex-1">
+          <Field id="season-starts" label="Début">
+            <input
+              id="season-starts"
+              name="startsAt"
+              type="date"
+              required
+              className={inputClass}
+            />
+          </Field>
         </div>
-        <div className="flex-1">
-          <label htmlFor="season-ends" className={labelClass}>
-            Fin
-          </label>
-          <input
-            id="season-ends"
-            name="endsAt"
-            type="date"
-            required
-            className={inputClass}
-          />
+        <div className="min-w-0 flex-1">
+          <Field id="season-ends" label="Fin">
+            <input
+              id="season-ends"
+              name="endsAt"
+              type="date"
+              required
+              className={inputClass}
+            />
+          </Field>
         </div>
       </div>
 
       <StateMessage state={state} />
-      <SubmitButton>Créer et activer la saison</SubmitButton>
+      <SubmitButton>
+        {currentSeasonName ? 'Créer et passer à cette saison' : 'Créer la saison'}
+      </SubmitButton>
     </form>
   )
 }
 
-export function TeamForm() {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    createTeam,
-    IDLE,
-  )
+function TeamForm({
+  onSaved,
+}: {
+  onSaved: (state: SavedFormState) => void
+}) {
+  const [state, formAction] = useFormAction(createTeam, onSaved)
 
   return (
-    <form action={formAction} className="space-y-3">
-      <div>
-        <label htmlFor="team-name" className={labelClass}>
-          Nom de l’équipe
-        </label>
+    <form action={formAction} className="space-y-4">
+      <Field id="team-name" label="Nom de l’équipe">
         <input
           id="team-name"
           name="name"
@@ -182,12 +156,9 @@ export function TeamForm() {
           placeholder="Lyon 1"
           className={inputClass}
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="team-division" className={labelClass}>
-          Division
-        </label>
+      <Field id="team-division" label="Division">
         <input
           id="team-division"
           name="division"
@@ -196,30 +167,32 @@ export function TeamForm() {
           placeholder="Régionale 1"
           className={inputClass}
         />
-      </div>
+      </Field>
 
       <StateMessage state={state} />
-      <SubmitButton>Créer l’équipe</SubmitButton>
+      <SubmitButton>Ajouter l’équipe</SubmitButton>
     </form>
   )
 }
 
 export type TeamRow = { id: string; name: string; division: string }
 
-function RenameForm({ team }: { team: TeamRow }) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    updateTeam,
-    IDLE,
-  )
+function TeamEditForm({
+  team,
+  onSaved,
+  remove,
+}: {
+  team: TeamRow
+  onSaved: (state: SavedFormState) => void
+  remove: DeleteConfig
+}) {
+  const [state, formAction] = useFormAction(updateTeam, onSaved)
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="teamId" value={team.id} />
 
-      <div>
-        <label htmlFor={`${team.id}-name`} className={labelClass}>
-          Nom de l’équipe
-        </label>
+      <Field id={`${team.id}-name`} label="Nom de l’équipe">
         <input
           id={`${team.id}-name`}
           name="name"
@@ -228,12 +201,9 @@ function RenameForm({ team }: { team: TeamRow }) {
           defaultValue={team.name}
           className={inputClass}
         />
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor={`${team.id}-division`} className={labelClass}>
-          Division
-        </label>
+      <Field id={`${team.id}-division`} label="Division">
         <input
           id={`${team.id}-division`}
           name="division"
@@ -242,150 +212,128 @@ function RenameForm({ team }: { team: TeamRow }) {
           defaultValue={team.division}
           className={inputClass}
         />
-      </div>
+      </Field>
 
       <StateMessage state={state} />
-      <SubmitButton>Enregistrer les modifications</SubmitButton>
+      <SaveBar saveLabel="Enregistrer" remove={remove} />
     </form>
   )
 }
 
-function DeleteTeamForm({ team }: { team: TeamRow }) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    deleteTeam,
-    IDLE,
-  )
+/**
+ * One team in the list: its name and division, and a pencil that opens the
+ * edit form. Deleting is an icon beside that form's save button, behind a
+ * confirmation, rather than on the card where a stray tap could reach it.
+ */
+export function TeamCard({ team }: { team: TeamRow }) {
+  const [open, setOpen] = useState(false)
+  const [closeRequest, setCloseRequest] = useState(0)
+  const showToast = useToast()
+
+  const handleSaved = (state: SavedFormState) => {
+    showToast(state.message)
+    setCloseRequest((count) => count + 1)
+  }
+
+  // Owned here: a successful delete removes this card along with its form.
+  const [deleteState, deleteAction] = useFormAction(deleteTeam, handleSaved)
 
   return (
-    <form
-      action={formAction}
-      className="space-y-2"
-      onSubmit={(event) => {
-        if (
-          !confirm(
-            `Supprimer « ${team.name} » ? Ses rencontres et les pronostics associés seront aussi supprimés. Cette action est irréversible.`,
-          )
-        ) {
-          event.preventDefault()
-        }
-      }}
-    >
-      <input type="hidden" name="teamId" value={team.id} />
-      <StateMessage state={state} />
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          aria-label={`Supprimer l’équipe ${team.name}`}
-          title="Supprimer l’équipe"
-          className="flex size-11 items-center justify-center rounded-md border border-loss/40 bg-transparent text-loss transition-colors hover:bg-loss/10"
+    <li className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-sheet py-3 pr-3 pl-4">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-ink">{team.name}</p>
+        <p className="mt-0.5 text-xs text-ink-soft">{team.division}</p>
+      </div>
+
+      <IconButton label={`Modifier ${team.name}`} onClick={() => setOpen(true)}>
+        <Pencil aria-hidden className="size-5" />
+      </IconButton>
+
+      {open && (
+        <Modal
+          title="Modifier l’équipe"
+          onClose={() => setOpen(false)}
+          requestClose={closeRequest}
         >
-          <Trash2 aria-hidden className="size-5" />
-        </button>
-      </div>
-    </form>
+          <TeamEditForm
+            team={team}
+            onSaved={handleSaved}
+            remove={{
+              action: deleteAction,
+              state: deleteState,
+              label: 'Supprimer l’équipe',
+              confirmMessage: `Supprimer « ${team.name} » ? Toutes ses rencontres, les pronostics et les points associés seront aussi supprimés. Cette action est irréversible.`,
+            }}
+          />
+        </Modal>
+      )}
+    </li>
   )
 }
 
-export function TeamEditForm({ team }: { team: TeamRow }) {
-  return (
-    <details className="group">
-      <summary className="cursor-pointer list-none text-xs font-medium text-court-dark marker:content-none">
-        <span className="group-open:hidden">Modifier</span>
-        <span className="hidden group-open:inline">Fermer</span>
-      </summary>
-
-      <div className="mt-3 space-y-5 border-t border-line pt-3">
-        <RenameForm team={team} />
-        <DeleteTeamForm team={team} />
-      </div>
-    </details>
-  )
-}
-
-function TeamSelect({
-  id,
-  name,
-  teams,
+/**
+ * A full-width "add" button that opens a form in a modal.
+ *
+ * Creating a season happens once a year and adding a team a handful of times;
+ * a form left permanently open for either pushed the lists an admin actually
+ * reads below the fold. Same pattern as fixtures on the admin page.
+ */
+function CreateInModal({
   label,
+  title,
+  children,
 }: {
-  id: string
-  name: string
-  teams: TeamOption[]
   label: string
+  title: string
+  children: (onSaved: (state: SavedFormState) => void) => ReactNode
 }) {
+  const [open, setOpen] = useState(false)
+  const [closeRequest, setCloseRequest] = useState(0)
+  const showToast = useToast()
+
+  const handleSaved = (state: SavedFormState) => {
+    showToast(state.message)
+    if (!state.warning) setCloseRequest((count) => count + 1)
+  }
+
   return (
-    <div>
-      <label htmlFor={id} className={labelClass}>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-shuttle-text-soft/50 text-sm font-semibold text-court transition-colors active:bg-sheet/5"
+      >
+        <Plus aria-hidden className="size-4" strokeWidth={2.5} />
         {label}
-      </label>
-      <select id={id} name={name} required defaultValue="" className={inputClass}>
-        <option value="" disabled>
-          Choisir une équipe…
-        </option>
-        {teams.map((team) => (
-          <option key={team.id} value={team.id}>
-            {team.name}
-          </option>
-        ))}
-      </select>
-    </div>
+      </button>
+
+      {open && (
+        <Modal
+          title={title}
+          onClose={() => setOpen(false)}
+          requestClose={closeRequest}
+        >
+          {children(handleSaved)}
+        </Modal>
+      )}
+    </>
   )
 }
 
-export function MatchForm({ teams }: { teams: TeamOption[] }) {
-  const [state, formAction] = useActionState<ManageState, FormData>(
-    createMatch,
-    IDLE,
-  )
-
+export function NewSeasonButton({ currentSeasonName }: { currentSeasonName?: string }) {
   return (
-    <form action={formAction} className="space-y-3">
-      <TeamSelect
-        id="match-home"
-        name="homeTeamId"
-        teams={teams}
-        label="Équipe à domicile"
-      />
-      <TeamSelect
-        id="match-away"
-        name="awayTeamId"
-        teams={teams}
-        label="Équipe à l’extérieur"
-      />
+    <CreateInModal label="Nouvelle saison" title="Nouvelle saison">
+      {(onSaved) => (
+        <SeasonForm currentSeasonName={currentSeasonName} onSaved={onSaved} />
+      )}
+    </CreateInModal>
+  )
+}
 
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label htmlFor="match-played-at" className={labelClass}>
-            Date et heure (Paris)
-          </label>
-          <input
-            id="match-played-at"
-            name="playedAt"
-            type="datetime-local"
-            required
-            className={inputClass}
-          />
-        </div>
-        <div className="w-24">
-          <label htmlFor="match-round" className={labelClass}>
-            Journée
-          </label>
-          <input
-            id="match-round"
-            name="round"
-            type="number"
-            inputMode="numeric"
-            required
-            min={1}
-            max={52}
-            placeholder="1"
-            className={`num ${inputClass}`}
-          />
-        </div>
-      </div>
-
-      <StateMessage state={state} />
-      <SubmitButton>Créer la rencontre</SubmitButton>
-    </form>
+export function NewTeamButton() {
+  return (
+    <CreateInModal label="Ajouter une équipe" title="Nouvelle équipe">
+      {(onSaved) => <TeamForm onSaved={onSaved} />}
+    </CreateInModal>
   )
 }

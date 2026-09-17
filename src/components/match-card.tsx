@@ -92,7 +92,7 @@ export function MatchCard({ match, now }: { match: MatchCardData; now: Date }) {
         ))}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-xs">
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs">
         {prediction ? (
           <span className="text-ink-soft">
             Votre pronostic :{' '}

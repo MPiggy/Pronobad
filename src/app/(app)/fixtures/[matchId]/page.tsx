@@ -97,7 +97,7 @@ async function MatchContent({
             ))}
           </div>
 
-          <p className="mt-4 flex flex-wrap items-center gap-x-1.5 border-t border-line pt-3 text-xs text-ink-soft">
+          <p className="mt-4 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-soft">
             <span>Coup d’envoi à {formatTime(match.playedAt)}</span>
             {!state.locked && (
               <span className="flex items-center gap-1 font-medium text-court-dark">

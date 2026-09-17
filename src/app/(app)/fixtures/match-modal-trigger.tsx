@@ -39,7 +39,14 @@ export function MatchModalTrigger({
 
       {open && (
         <Modal
-          title={`${match.homeTeam.name} – ${match.awayTeam.name}`}
+          // With the form open, its labels already name both teams; repeating
+          // them as a title crowds long names. Closed, there are no labels, so
+          // the title is what says which fixture this is.
+          title={
+            state.locked
+              ? `${match.homeTeam.name} – ${match.awayTeam.name}`
+              : 'Votre pronostic'
+          }
           onClose={() => setOpen(false)}
           requestClose={closeRequest}
         >

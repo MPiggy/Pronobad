@@ -3,36 +3,39 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/guards'
+import {
+  ForbiddenError,
+  NotFoundError,
+  requireMatchManager,
+  requireSuperadmin,
+} from '@/lib/auth/guards'
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
-import { parseParisDateTimeLocal } from '@/lib/format'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
 import {
-  optionalMaxScoreField,
   resolveMaxScore,
   scoreFieldFor,
   withPossibleScore,
 } from '@/lib/predictions/score-field'
 import { getMaxScore } from '@/lib/settings/queries'
+import { getCurrentSeason } from '@/lib/seasons'
 import { leaderboardTag } from '@/lib/leaderboard/queries'
+import { parseFixtureFields, type FixtureFields } from '@/lib/fixtures/fixture-fields'
+import type { FormState } from '@/lib/form-state'
 import { MatchStatus } from '@/generated/prisma/enums'
+import { Prisma } from '@/generated/prisma/client'
 
 /**
- * Admin mutations: entering a result, moving `locksAt`, and rescheduling.
+ * Fixture mutations: creating and editing a fixture, entering its result,
+ * deleting it.
  *
  * These are the actions that can silently rewrite a leaderboard, so each is
  * permission-checked server-side and each writes an AuditLog row (PLAN.md
- * § Roles & Permissions). `requireMatchManager` is the boundary — the admin UI
- * being hidden from members is not access control.
+ * § Roles & Permissions). The guards are the boundary — the admin UI being
+ * hidden from members is not access control.
  */
 
-export type AdminState =
-  | { status: 'idle' }
-  | { status: 'saved'; message: string }
-  | { status: 'error'; message: string }
-
 /** Turns a thrown guard error into a message the form can show. */
-function toErrorState(error: unknown): AdminState {
+function toErrorState(error: unknown): FormState {
   if (error instanceof ForbiddenError || error instanceof NotFoundError) {
     return { status: 'error', message: error.message }
   }
@@ -40,65 +43,228 @@ function toErrorState(error: unknown): AdminState {
   throw error
 }
 
-/** The fixture the result belongs to, before any score is looked at. */
+/** Whether a Prisma error is a unique-constraint violation. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  )
+}
+
+/** The fixture an action targets, before anything else is looked at. */
 const targetSchema = z.object({ matchId: z.string().min(1) })
 
-const matchMaxScoreSchema = z.object({
-  matchId: z.string().min(1),
-  maxScore: optionalMaxScoreField,
-})
-
 /**
- * Overrides how many rubbers one fixture is played over, or clears the
- * override so it follows the competition default again.
- *
- * Changing this after predictions are in does not rewrite them: a 5-3 filed
- * when the fixture was 8 rubbers is still what that member predicted, and
- * silently turning it into something else would be inventing a prediction they
- * never made. They are counted and reported instead, so an admin can see that
- * some members now need to re-enter a scoreline that has become impossible.
+ * Both teams must exist and belong to the season the fixture is in — a team
+ * id posted from a stale page could otherwise pair last season's team with
+ * this season's fixture.
  */
-export async function updateMatchMaxScore(
-  _prevState: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const parsed = matchMaxScoreSchema.safeParse({
-    matchId: formData.get('matchId'),
-    maxScore: formData.get('maxScore'),
+async function checkTeams(
+  seasonId: string,
+  { homeTeamId, awayTeamId }: FixtureFields,
+): Promise<FormState | null> {
+  const teams = await db.team.findMany({
+    where: { id: { in: [homeTeamId, awayTeamId] } },
+    select: { id: true, seasonId: true },
   })
 
-  if (!parsed.success) {
+  const home = teams.find((team) => team.id === homeTeamId)
+  const away = teams.find((team) => team.id === awayTeamId)
+
+  if (!home || !away) {
+    return { status: 'error', message: 'L’une des deux équipes n’existe pas.' }
+  }
+
+  if (home.seasonId !== seasonId || away.seasonId !== seasonId) {
     return {
       status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Valeur invalide.',
+      message: 'Les deux équipes doivent appartenir à la saison en cours.',
     }
   }
 
-  const { matchId, maxScore } = parsed.data
+  return null
+}
+
+/**
+ * Predictions whose two scores no longer add up to the fixture's rubber count.
+ *
+ * Changing the count after predictions are in does not rewrite them: a 5-3
+ * filed when the fixture was 8 rubbers is still what that member predicted,
+ * and silently turning it into something else would be inventing a prediction
+ * they never made. They are counted and reported instead, so the admin can see
+ * that some members need to re-enter a scoreline that has become impossible.
+ *
+ * A raw query because Prisma cannot express "column + column" in a `where`.
+ */
+async function countStrandedPredictions(
+  matchId: string,
+  maxScore: number,
+): Promise<number> {
+  const [row] = await db.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "Prediction"
+    WHERE "matchId" = ${matchId}
+      AND "homeScore" + "awayScore" <> ${maxScore}
+  `
+
+  return Number(row?.count ?? 0)
+}
+
+function strandedWarning(count: number, maxScore: number): string | undefined {
+  if (count === 0) return undefined
+
+  return count === 1
+    ? `1 pronostic ne totalise plus ${maxScore} et doit être ressaisi par son auteur.`
+    : `${count} pronostics ne totalisent plus ${maxScore} et doivent être ressaisis par leurs auteurs.`
+}
+
+/**
+ * Creates a fixture in the current season.
+ *
+ * Every field is set here, deadline and rubber count included — a fixture
+ * should not need a second visit to a second form to be complete.
+ */
+export async function createMatch(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = parseFixtureFields(formData)
+
+  if (!parsed.ok) return { status: 'error', message: parsed.message }
+
+  const { fixture } = parsed
+
+  try {
+    const actor = await requireSuperadmin()
+    const season = await getCurrentSeason()
+
+    if (!season) {
+      return { status: 'error', message: 'Créez d’abord une saison.' }
+    }
+
+    const teamError = await checkTeams(season.id, fixture)
+    if (teamError) return teamError
+
+    const match = await db.match.create({
+      data: { seasonId: season.id, ...fixture },
+    })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'MATCH_CREATED',
+        entity: 'Match',
+        entityId: match.id,
+        after: {
+          homeTeamId: fixture.homeTeamId,
+          awayTeamId: fixture.awayTeamId,
+          round: fixture.round,
+          playedAt: fixture.playedAt.toISOString(),
+          locksAt: fixture.locksAt.toISOString(),
+          maxScore: fixture.maxScore,
+        },
+      },
+    })
+
+    revalidatePath('/admin')
+    updateTag(matchesTag(season.id))
+
+    return { status: 'saved', message: 'Rencontre créée.' }
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return {
+        status: 'error',
+        message: 'Cette rencontre existe déjà pour cette journée.',
+      }
+    }
+
+    return toErrorState(error)
+  }
+}
+
+/**
+ * Saves every editable field of a fixture at once.
+ *
+ * One audit row per save, holding only what changed. `locksAt` is in there
+ * whenever it moved: it is the one setting that can reopen a closed prediction
+ * window, so "why is this fixture open again" always has an answer (PLAN.md).
+ */
+export async function updateMatch(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const target = targetSchema.safeParse({ matchId: formData.get('matchId') })
+
+  if (!target.success) return { status: 'error', message: 'Rencontre invalide.' }
+
+  const parsed = parseFixtureFields(formData)
+
+  if (!parsed.ok) return { status: 'error', message: parsed.message }
+
+  const { matchId } = target.data
+  const { fixture } = parsed
 
   try {
     const actor = await requireMatchManager(matchId)
 
     const before = await db.match.findUnique({
       where: { id: matchId },
-      select: { seasonId: true, maxScore: true },
+      select: {
+        seasonId: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        round: true,
+        playedAt: true,
+        locksAt: true,
+        maxScore: true,
+      },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
 
-    await db.match.update({
-      where: { id: matchId },
-      data: { maxScore },
-    })
+    const teamError = await checkTeams(before.seasonId, fixture)
+    if (teamError) return teamError
+
+    // Only what actually moved goes in the audit row — a row that repeats
+    // every unchanged column hides the one that changed.
+    type AuditValue = string | number | null
+    const changedBefore: Record<string, AuditValue> = {}
+    const changedAfter: Record<string, AuditValue> = {}
+
+    const compare = <K extends keyof FixtureFields>(
+      key: K,
+      serialise: (value: FixtureFields[K]) => AuditValue = (value) =>
+        value as AuditValue,
+    ) => {
+      const previous = serialise(before[key] as FixtureFields[K])
+      const next = serialise(fixture[key])
+      if (previous !== next) {
+        changedBefore[key] = previous
+        changedAfter[key] = next
+      }
+    }
+
+    compare('homeTeamId')
+    compare('awayTeamId')
+    compare('round')
+    compare('playedAt', (date) => date.toISOString())
+    compare('locksAt', (date) => date.toISOString())
+    compare('maxScore')
+
+    if (Object.keys(changedAfter).length === 0) {
+      return { status: 'saved', message: 'Aucune modification.' }
+    }
+
+    await db.match.update({ where: { id: matchId }, data: fixture })
 
     await db.auditLog.create({
       data: {
         userId: actor.id,
-        action: 'MATCH_MAX_SCORE_CHANGED',
+        action: 'MATCH_UPDATED',
         entity: 'Match',
         entityId: matchId,
-        before: { maxScore: before.maxScore },
-        after: { maxScore },
+        before: changedBefore,
+        after: changedAfter,
       },
     })
 
@@ -106,29 +272,25 @@ export async function updateMatchMaxScore(
     updateTag(matchesTag(before.seasonId))
     updateTag(matchTag(matchId))
 
-    const effective = resolveMaxScore(maxScore, await getMaxScore())
+    let warning: string | undefined
 
-    // Predictions whose two scores no longer add up to the rubber count. Done
-    // with a raw comparison because Prisma cannot express "column + column" in
-    // a `where`.
-    const [stranded] = await db.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Prediction"
-      WHERE "matchId" = ${matchId}
-        AND "homeScore" + "awayScore" <> ${effective}
-    `
-
-    const count = Number(stranded?.count ?? 0)
-    const scope = maxScore === null ? 'défaut' : `${maxScore} matchs`
-
-    return {
-      status: 'saved',
-      message:
-        count === 0
-          ? `Rencontre en ${effective} matchs (${scope}).`
-          : `Rencontre en ${effective} matchs (${scope}). ${count} pronostic${count > 1 ? 's' : ''} ne tota${count > 1 ? 'lisent' : 'lise'} plus ${effective} et ${count > 1 ? 'doivent' : 'doit'} être ressaisi${count > 1 ? 's' : ''}.`,
+    if ('maxScore' in changedAfter) {
+      const effective = resolveMaxScore(fixture.maxScore, await getMaxScore())
+      warning = strandedWarning(
+        await countStrandedPredictions(matchId, effective),
+        effective,
+      )
     }
+
+    return { status: 'saved', message: 'Rencontre mise à jour.', warning }
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return {
+        status: 'error',
+        message: 'Cette rencontre existe déjà pour cette journée.',
+      }
+    }
+
     return toErrorState(error)
   }
 }
@@ -154,9 +316,9 @@ const resultSchemaFor = (maxScore: number) =>
  * than double-counting, because the engine upserts on `predictionId`.
  */
 export async function enterResult(
-  _prevState: AdminState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<AdminState> {
+): Promise<FormState> {
   const target = targetSchema.safeParse({ matchId: formData.get('matchId') })
 
   if (!target.success) {
@@ -254,7 +416,7 @@ export async function enterResult(
 
     return {
       status: 'saved',
-      message: `Résultat enregistré. ${scored} pronostic${scored > 1 ? 's' : ''} noté${scored > 1 ? 's' : ''}.`,
+      message: `Résultat enregistré · ${scored} pronostic${scored > 1 ? 's' : ''} noté${scored > 1 ? 's' : ''}`,
     }
   } catch (error) {
     return toErrorState(error)
@@ -268,9 +430,9 @@ export async function enterResult(
  * the leaderboard for a fixture that no longer has a result.
  */
 export async function withdrawResult(
-  _prevState: AdminState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<AdminState> {
+): Promise<FormState> {
   const matchId = z.string().min(1).safeParse(formData.get('matchId'))
 
   if (!matchId.success) {
@@ -321,80 +483,7 @@ export async function withdrawResult(
     updateTag(matchTag(matchId.data))
     updateTag(leaderboardTag(before.seasonId))
 
-    return { status: 'saved', message: 'Résultat retiré.' }
-  } catch (error) {
-    return toErrorState(error)
-  }
-}
-
-const locksAtSchema = z.object({
-  matchId: z.string().min(1),
-  // `datetime-local` posts "2026-11-15T18:00" with no zone. Interpreted as the
-  // server's zone by `new Date()`, which is UTC on Vercel — so it is parsed
-  // explicitly against Europe/Paris below rather than trusted directly.
-  locksAt: z.string().min(1, { message: 'Indiquez une date de fermeture.' }),
-})
-
-/**
- * Moves a fixture's prediction deadline.
- *
- * Audited with particular care: this is the one setting that can reopen a
- * closed prediction window, so "why was my prediction overwritten" has an
- * answer (PLAN.md).
- */
-export async function updateLocksAt(
-  _prevState: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const parsed = locksAtSchema.safeParse({
-    matchId: formData.get('matchId'),
-    locksAt: formData.get('locksAt'),
-  })
-
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Date invalide.',
-    }
-  }
-
-  const locksAt = parseParisDateTimeLocal(parsed.data.locksAt)
-
-  if (!locksAt || Number.isNaN(locksAt.getTime())) {
-    return { status: 'error', message: 'Date de fermeture invalide.' }
-  }
-
-  try {
-    const actor = await requireMatchManager(parsed.data.matchId)
-
-    const before = await db.match.findUnique({
-      where: { id: parsed.data.matchId },
-      select: { seasonId: true, locksAt: true },
-    })
-
-    if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
-
-    await db.match.update({
-      where: { id: parsed.data.matchId },
-      data: { locksAt },
-    })
-
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'LOCKS_AT_CHANGED',
-        entity: 'Match',
-        entityId: parsed.data.matchId,
-        before: { locksAt: before.locksAt.toISOString() },
-        after: { locksAt: locksAt.toISOString() },
-      },
-    })
-
-    revalidatePath('/admin')
-    updateTag(matchesTag(before.seasonId))
-    updateTag(matchTag(parsed.data.matchId))
-
-    return { status: 'saved', message: 'Fermeture des pronostics mise à jour.' }
+    return { status: 'saved', message: 'Résultat retiré' }
   } catch (error) {
     return toErrorState(error)
   }
@@ -415,9 +504,9 @@ export async function updateLocksAt(
  * the fixture and stays the only record that it ever existed.
  */
 export async function deleteMatch(
-  _prevState: AdminState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<AdminState> {
+): Promise<FormState> {
   const matchId = z.string().min(1).safeParse(formData.get('matchId'))
 
   if (!matchId.success) {
@@ -484,7 +573,6 @@ export async function deleteMatch(
     })
 
     revalidatePath('/admin')
-    revalidatePath('/admin/manage')
     revalidatePath('/profile')
     updateTag(matchesTag(before.seasonId))
     updateTag(matchTag(matchId.data))
@@ -496,96 +584,8 @@ export async function deleteMatch(
       status: 'saved',
       message:
         predictions === 0
-          ? `Rencontre « ${label} » supprimée.`
-          : `Rencontre « ${label} » supprimée, avec ${predictions} pronostic${predictions > 1 ? 's' : ''} et ${points} point${points > 1 ? 's' : ''} au classement.`,
-    }
-  } catch (error) {
-    return toErrorState(error)
-  }
-}
-
-const playedAtSchema = z.object({
-  matchId: z.string().min(1),
-  // Same `datetime-local` caveat as `locksAt` above: no zone is posted, so the
-  // value is parsed explicitly against Europe/Paris rather than by `new Date()`.
-  playedAt: z.string().min(1, { message: 'Indiquez une date de rencontre.' }),
-})
-
-/**
- * Reschedules a fixture.
- *
- * Interclub fixtures get postponed, which is why `playedAt` exists as its own
- * column — but a postponement that left `locksAt` behind would close
- * predictions weeks before the fixture is actually played. So the deadline
- * always follows the new date, and an admin who wants a different one sets it
- * afterwards with `updateLocksAt`.
- *
- * Both values land in one audit row: this can reopen a prediction window that
- * had already closed, and "why is this fixture open again" needs an answer.
- */
-export async function updateMatchDate(
-  _prevState: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const parsed = playedAtSchema.safeParse({
-    matchId: formData.get('matchId'),
-    playedAt: formData.get('playedAt'),
-  })
-
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Date invalide.',
-    }
-  }
-
-  const playedAt = parseParisDateTimeLocal(parsed.data.playedAt)
-
-  if (!playedAt || Number.isNaN(playedAt.getTime())) {
-    return { status: 'error', message: 'Date de rencontre invalide.' }
-  }
-
-  try {
-    const actor = await requireMatchManager(parsed.data.matchId)
-
-    const before = await db.match.findUnique({
-      where: { id: parsed.data.matchId },
-      select: { seasonId: true, playedAt: true, locksAt: true },
-    })
-
-    if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
-
-    await db.match.update({
-      where: { id: parsed.data.matchId },
-      data: { playedAt, locksAt: playedAt },
-    })
-
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'MATCH_DATE_CHANGED',
-        entity: 'Match',
-        entityId: parsed.data.matchId,
-        before: {
-          playedAt: before.playedAt.toISOString(),
-          locksAt: before.locksAt.toISOString(),
-        },
-        after: {
-          playedAt: playedAt.toISOString(),
-          locksAt: playedAt.toISOString(),
-        },
-      },
-    })
-
-    revalidatePath('/admin')
-    revalidatePath('/admin/manage')
-    updateTag(matchesTag(before.seasonId))
-    updateTag(matchTag(parsed.data.matchId))
-
-    return {
-      status: 'saved',
-      message:
-        'Date mise à jour. Les pronostics ferment désormais au coup d’envoi.',
+          ? `« ${label} » supprimée`
+          : `« ${label} » supprimée · ${predictions} pronostic${predictions > 1 ? 's' : ''}, ${points} point${points > 1 ? 's' : ''}`,
     }
   } catch (error) {
     return toErrorState(error)

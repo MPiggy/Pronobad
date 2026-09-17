@@ -71,7 +71,10 @@ export function Modal({
         }`}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 id={headingId} className="text-lg font-bold text-ink">
+          <h2
+            id={headingId}
+            className="min-w-0 text-lg leading-snug font-bold text-balance break-words hyphens-auto text-ink"
+          >
             {title}
           </h2>
           <button

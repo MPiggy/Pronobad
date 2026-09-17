@@ -71,7 +71,7 @@ export function NextMatchHero({
           </time>
         </div>
 
-        <div className="mt-4 border-t border-shuttle-text-soft/15 pt-4 text-center">
+        <div className="mt-5 text-center">
           {prediction ? (
             <p className="text-sm font-medium text-court">
               ✓ Pronostic enregistré : {prediction.homeScore} - {prediction.awayScore}
@@ -86,7 +86,14 @@ export function NextMatchHero({
 
       {open && (
         <Modal
-          title={`${match.homeTeam.name} – ${match.awayTeam.name}`}
+          // With the form open, its labels already name both teams; repeating
+          // them as a title crowds long names. Closed, there are no labels, so
+          // the title is what says which fixture this is.
+          title={
+            state.locked
+              ? `${match.homeTeam.name} – ${match.awayTeam.name}`
+              : 'Votre pronostic'
+          }
           onClose={() => setOpen(false)}
           requestClose={closeRequest}
         >

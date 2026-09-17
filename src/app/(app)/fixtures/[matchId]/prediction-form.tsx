@@ -80,7 +80,6 @@ export function PredictionForm({
         defaultHome={prediction?.homeScore}
         defaultAway={prediction?.awayScore}
         size="lg"
-        labels="hidden"
       />
 
       <p className="text-center text-xs text-ink-soft">

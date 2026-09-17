@@ -9,23 +9,18 @@ import { matchesTag } from '@/lib/predictions/queries'
 import { DEFAULT_MAX_SCORE, maxScoreField } from '@/lib/predictions/score-field'
 import { SETTINGS_ID, SETTINGS_TAG } from '@/lib/settings/queries'
 import { parseParisDateTimeLocal } from '@/lib/format'
+import type { FormState } from '@/lib/form-state'
 import { Prisma } from '@/generated/prisma/client'
 
 /**
- * Structure mutations: seasons, teams, fixtures, and competition settings.
+ * Settings mutations: the season, its teams, and the competition format.
  *
- * Kept apart from `../actions.ts`, which handles the day-to-day of a season
- * already in place (results, deadlines). Everything here changes what exists
- * rather than what happened, and is superadmin-only.
+ * Kept apart from `../actions.ts`, which handles fixtures and their results.
+ * Everything here is the frame those fixtures sit in, and is superadmin-only.
  */
 
-export type ManageState =
-  | { status: 'idle' }
-  | { status: 'saved'; message: string }
-  | { status: 'error'; message: string }
-
 /** Turns a thrown guard error into a message the form can show. */
-function toErrorState(error: unknown): ManageState {
+function toErrorState(error: unknown): FormState {
   if (error instanceof ForbiddenError || error instanceof NotFoundError) {
     return { status: 'error', message: error.message }
   }
@@ -71,9 +66,9 @@ const seasonSchema = z
  * seasons both flagged current would make every page pick one at random.
  */
 export async function createSeason(
-  _prevState: ManageState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<ManageState> {
+): Promise<FormState> {
   const parsed = seasonSchema.safeParse({
     name: formData.get('name'),
     startsAt: formData.get('startsAt'),
@@ -147,9 +142,9 @@ const teamSchema = z.object({
 
 /** Creates a team in the current season. Superadmin only. */
 export async function createTeam(
-  _prevState: ManageState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<ManageState> {
+): Promise<FormState> {
   const parsed = teamSchema.safeParse({
     name: formData.get('name'),
     division: formData.get('division'),
@@ -211,9 +206,9 @@ const updateTeamSchema = z.object({
 
 /** Renames a team and/or changes its division. Superadmin only. */
 export async function updateTeam(
-  _prevState: ManageState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<ManageState> {
+): Promise<FormState> {
   const parsed = updateTeamSchema.safeParse({
     teamId: formData.get('teamId'),
     name: formData.get('name'),
@@ -283,9 +278,9 @@ const deleteTeamSchema = z.object({
  * actually protects against an accidental click.
  */
 export async function deleteTeam(
-  _prevState: ManageState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<ManageState> {
+): Promise<FormState> {
   const parsed = deleteTeamSchema.safeParse({
     teamId: formData.get('teamId'),
   })
@@ -337,18 +332,18 @@ const settingsSchema = z.object({
 })
 
 /**
- * Sets the highest score a fixture can be given.
+ * Sets the default number of rubbers a fixture is played over.
  *
- * Validation only ever runs on new entries, so lowering the cap leaves any
- * result or prediction already above it standing — deleting or clamping them
- * would rewrite the leaderboard to fix a typo in a setting. The count of those
- * rows is reported back instead, so an admin lowering the cap by mistake finds
- * out immediately rather than from a member.
+ * Validation only ever runs on new entries, so changing it leaves every
+ * result and prediction already filed standing — rewriting them would be
+ * inventing scores to fix a typo in a setting. Those that no longer add up to
+ * the new count are counted and reported back instead, so an admin changing
+ * it by mistake finds out immediately rather than from a member.
  */
 export async function updateMaxScore(
-  _prevState: ManageState,
+  _prevState: FormState,
   formData: FormData,
-): Promise<ManageState> {
+): Promise<FormState> {
   const parsed = settingsSchema.safeParse({
     maxScore: formData.get('maxScore'),
   })
@@ -375,8 +370,10 @@ export async function updateMaxScore(
 
     const before = current?.maxScore ?? DEFAULT_MAX_SCORE
 
+    const label = `${maxScore} match${maxScore > 1 ? 's' : ''} par rencontre`
+
     if (before === maxScore) {
-      return { status: 'saved', message: `Maximum inchangé (${maxScore} points).` }
+      return { status: 'saved', message: `Format inchangé : ${label}.` }
     }
 
     await db.appSettings.upsert({
@@ -399,158 +396,37 @@ export async function updateMaxScore(
     revalidateAdminPages()
     updateTag(SETTINGS_TAG)
 
-    if (maxScore > before) {
-      return { status: 'saved', message: `Maximum porté à ${maxScore} points.` }
-    }
-
-    // Only worth counting when the cap went down — raising it can't strand
-    // anything.
-    const [staleResults, stalePredictions] = await Promise.all([
-      db.match.count({
-        where: {
-          OR: [{ homeScore: { gt: maxScore } }, { awayScore: { gt: maxScore } }],
-        },
-      }),
-      db.prediction.count({
-        where: {
-          OR: [{ homeScore: { gt: maxScore } }, { awayScore: { gt: maxScore } }],
-        },
-      }),
+    // Scores on fixtures that follow the default and no longer add up to it.
+    // Fixtures with their own count are unaffected. Raw SQL because Prisma
+    // cannot express "column + column" in a `where`.
+    const [[results], [predictions]] = await Promise.all([
+      db.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*)::bigint AS count
+        FROM "Match"
+        WHERE "maxScore" IS NULL
+          AND "homeScore" IS NOT NULL
+          AND "homeScore" + "awayScore" <> ${maxScore}
+      `,
+      db.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*)::bigint AS count
+        FROM "Prediction" p
+        JOIN "Match" m ON m.id = p."matchId"
+        WHERE m."maxScore" IS NULL
+          AND p."homeScore" + p."awayScore" <> ${maxScore}
+      `,
     ])
 
-    const stale = staleResults + stalePredictions
+    const stale = Number(results?.count ?? 0) + Number(predictions?.count ?? 0)
 
     return {
       status: 'saved',
-      message:
+      message: `Format enregistré : ${label}.`,
+      warning:
         stale === 0
-          ? `Maximum abaissé à ${maxScore} points.`
-          : `Maximum abaissé à ${maxScore} points. ${stale} score${stale > 1 ? 's' : ''} déjà saisi${stale > 1 ? 's' : ''} dépasse${stale > 1 ? 'nt' : ''} cette limite et reste${stale > 1 ? 'nt' : ''} inchangé${stale > 1 ? 's' : ''}.`,
+          ? undefined
+          : `${stale} score${stale > 1 ? 's' : ''} déjà saisi${stale > 1 ? 's' : ''} ne totalise${stale > 1 ? 'nt' : ''} plus ${maxScore} et reste${stale > 1 ? 'nt' : ''} inchangé${stale > 1 ? 's' : ''}.`,
     }
   } catch (error) {
-    return toErrorState(error)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fixtures
-
-const matchSchema = z.object({
-  homeTeamId: z.string().min(1, { message: 'Choisissez l’équipe à domicile.' }),
-  awayTeamId: z.string().min(1, { message: 'Choisissez l’équipe à l’extérieur.' }),
-  playedAt: z.string().min(1, { message: 'Indiquez la date de la rencontre.' }),
-  round: z.coerce
-    .number({ message: 'Indiquez la journée.' })
-    .int({ message: 'La journée doit être un nombre entier.' })
-    .min(1, { message: 'La journée commence à 1.' })
-    .max(52, { message: 'Journée invalide.' }),
-})
-
-/**
- * Creates a fixture between two teams of the current season.
- *
- * `locksAt` starts equal to `playedAt` — the PLAN.md default — and is then
- * adjustable per fixture from the main admin page. Superadmin only.
- */
-export async function createMatch(
-  _prevState: ManageState,
-  formData: FormData,
-): Promise<ManageState> {
-  const parsed = matchSchema.safeParse({
-    homeTeamId: formData.get('homeTeamId'),
-    awayTeamId: formData.get('awayTeamId'),
-    playedAt: formData.get('playedAt'),
-    round: formData.get('round'),
-  })
-
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Rencontre invalide.',
-    }
-  }
-
-  const { homeTeamId, awayTeamId, round } = parsed.data
-
-  if (homeTeamId === awayTeamId) {
-    return {
-      status: 'error',
-      message: 'Une équipe ne peut pas jouer contre elle-même.',
-    }
-  }
-
-  const playedAt = parseParisDateTimeLocal(parsed.data.playedAt)
-
-  if (!playedAt || Number.isNaN(playedAt.getTime())) {
-    return { status: 'error', message: 'Date de rencontre invalide.' }
-  }
-
-  try {
-    const actor = await requireSuperadmin()
-    const season = await getCurrentSeason()
-
-    if (!season) {
-      return { status: 'error', message: 'Créez d’abord une saison.' }
-    }
-
-    const teams = await db.team.findMany({
-      where: { id: { in: [homeTeamId, awayTeamId] } },
-      select: { id: true, seasonId: true },
-    })
-
-    const home = teams.find((team) => team.id === homeTeamId)
-    const away = teams.find((team) => team.id === awayTeamId)
-
-    if (!home || !away) {
-      return { status: 'error', message: 'L’une des deux équipes n’existe pas.' }
-    }
-
-    if (home.seasonId !== season.id || away.seasonId !== season.id) {
-      return {
-        status: 'error',
-        message: 'Les deux équipes doivent appartenir à la saison en cours.',
-      }
-    }
-
-    const match = await db.match.create({
-      data: {
-        seasonId: season.id,
-        homeTeamId,
-        awayTeamId,
-        round,
-        playedAt,
-        // Predictions close at kickoff by default; adjustable from /admin.
-        locksAt: playedAt,
-      },
-    })
-
-    await db.auditLog.create({
-      data: {
-        userId: actor.id,
-        action: 'MATCH_CREATED',
-        entity: 'Match',
-        entityId: match.id,
-        after: {
-          homeTeamId,
-          awayTeamId,
-          round,
-          playedAt: playedAt.toISOString(),
-        },
-      },
-    })
-
-    revalidateAdminPages()
-    updateTag(matchesTag(season.id))
-
-    return { status: 'saved', message: 'Rencontre créée. Résultat et fermeture se gèrent depuis l’onglet Admin.' }
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return {
-        status: 'error',
-        message: 'Cette rencontre existe déjà pour cette journée.',
-      }
-    }
-
     return toErrorState(error)
   }
 }

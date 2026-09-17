@@ -46,6 +46,27 @@ export function PageShell({
   )
 }
 
+/**
+ * A heading over one group of cards, with room for a count or a status on
+ * the right — "Équipes · 12", "Saison · En cours : 2026-2027".
+ */
+export function SectionHeading({
+  aside,
+  children,
+}: {
+  aside?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div className="mb-2.5 flex items-baseline justify-between gap-3">
+      <h2 className="text-sm font-semibold text-shuttle-text">{children}</h2>
+      {aside && (
+        <p className="shrink-0 text-xs text-shuttle-text-soft">{aside}</p>
+      )}
+    </div>
+  )
+}
+
 /** Shown wherever a list has nothing in it — never leave a screen blank. */
 export function EmptyState({
   icon,

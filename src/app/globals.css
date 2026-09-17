@@ -46,10 +46,14 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Touch targets: 44px minimum per Apple HIG, 48dp per Material. */
+/*
+ * Touch targets: 44px minimum per Apple HIG, 48dp per Material.
+ * Checkboxes are exempt — their target is the label wrapped around them, and
+ * a 44px-tall box would render as a stretched square.
+ */
 button,
 a[role='button'],
-input,
+input:not([type='checkbox'], [type='radio']),
 select {
   min-height: 2.75rem;
 }
