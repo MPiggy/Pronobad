@@ -6,7 +6,11 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
-import { scoreFieldFor } from '@/lib/predictions/score-field'
+import {
+  resolveMaxScore,
+  scoreFieldFor,
+  withPossibleScore,
+} from '@/lib/predictions/score-field'
 import { getMaxScore } from '@/lib/settings/queries'
 
 /**
@@ -19,18 +23,23 @@ import { getMaxScore } from '@/lib/settings/queries'
  * is the actual rule (PLAN.md § Locking).
  */
 
+/** The fixture the prediction is for, before any score is looked at. */
+const targetSchema = z.object({ matchId: z.string().min(1) })
+
 /**
- * Built per call, not once at module load: the cap is an admin setting, so a
- * schema frozen at import time would keep enforcing the value the server
- * happened to boot with. The `max` attribute on the inputs is a courtesy —
- * this is the rule.
+ * Built per call, not once at module load: the rubber count belongs to the
+ * fixture, so a schema frozen at import time would enforce whichever value the
+ * server happened to boot with. The `max` attribute and the linked inputs are
+ * a courtesy — this is the rule.
  */
-const predictionSchemaFor = (maxScore: number) =>
-  z.object({
-    matchId: z.string().min(1),
-    homeScore: scoreFieldFor(maxScore),
-    awayScore: scoreFieldFor(maxScore),
-  })
+const scoreSchemaFor = (maxScore: number) =>
+  withPossibleScore(
+    z.object({
+      homeScore: scoreFieldFor(maxScore),
+      awayScore: scoreFieldFor(maxScore),
+    }),
+    maxScore,
+  )
 
 export type PredictionState =
   | { status: 'idle' }
@@ -43,8 +52,41 @@ export async function submitPrediction(
 ): Promise<PredictionState> {
   const user = await requireOnboardedUser()
 
-  const parsed = predictionSchemaFor(await getMaxScore()).safeParse({
-    matchId: formData.get('matchId'),
+  const target = targetSchema.safeParse({ matchId: formData.get('matchId') })
+
+  if (!target.success) {
+    return { status: 'error', message: 'Rencontre invalide.' }
+  }
+
+  // The fixture is loaded before the scores are parsed, because it carries the
+  // rubber count they have to be judged against.
+  const match = await db.match.findUnique({
+    where: { id: target.data.matchId },
+    select: {
+      id: true,
+      seasonId: true,
+      locksAt: true,
+      resultEnteredAt: true,
+      maxScore: true,
+    },
+  })
+
+  if (!match) {
+    return { status: 'error', message: 'Cette rencontre n’existe pas.' }
+  }
+
+  // The authoritative lock check, before validation so a member is told the
+  // fixture is closed rather than nitpicked about a score that cannot be saved
+  // either way. The clock is read here, at write time, so a form rendered
+  // before lock cannot be submitted after it.
+  const state = lockState(match)
+
+  if (state.locked) {
+    return { status: 'error', message: explainLock(state) }
+  }
+
+  const maxScore = resolveMaxScore(match.maxScore, await getMaxScore())
+  const parsed = scoreSchemaFor(maxScore).safeParse({
     homeScore: formData.get('homeScore'),
     awayScore: formData.get('awayScore'),
   })
@@ -56,29 +98,7 @@ export async function submitPrediction(
     }
   }
 
-  const { matchId, homeScore, awayScore } = parsed.data
-
-  const match = await db.match.findUnique({
-    where: { id: matchId },
-    select: {
-      id: true,
-      seasonId: true,
-      locksAt: true,
-      resultEnteredAt: true,
-    },
-  })
-
-  if (!match) {
-    return { status: 'error', message: 'Cette rencontre n’existe pas.' }
-  }
-
-  // The authoritative lock check. The clock is read here, at write time, so a
-  // form rendered before lock cannot be submitted after it.
-  const state = lockState(match)
-
-  if (state.locked) {
-    return { status: 'error', message: explainLock(state) }
-  }
+  const { homeScore, awayScore } = parsed.data
 
   await db.prediction.upsert({
     where: { userId_matchId: { userId: user.id, matchId: match.id } },

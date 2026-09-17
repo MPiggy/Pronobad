@@ -109,6 +109,15 @@ model Match {
   locksAt  DateTime
   round    Int
 
+  /// How many individual rubbers this fixture is played over, when it differs
+  /// from the competition default in `AppSettings.maxScore`. Null inherits it.
+  ///
+  /// Every rubber produces exactly one winner, so this is simultaneously the
+  /// highest score a side can reach and the total the two scores must add up
+  /// to — a 6-rubber fixture is 6-0, 5-1, 4-2, 3-3, 2-4, 1-5 or 0-6, never
+  /// 5-2. `src/lib/predictions/score-field.ts` is where that rule lives.
+  maxScore Int?
+
   status    MatchStatus @default(UPCOMING)
   homeScore Int?
   awayScore Int?

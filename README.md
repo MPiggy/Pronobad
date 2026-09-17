@@ -164,7 +164,8 @@ the access control.
 
 | Setting | Where | Notes |
 |---|---|---|
-| Score cap (`AppSettings.maxScore`) | `/admin/manage` → Réglages | Highest score either side can be given. Defaults to **8**, the rubber count of a standard interclub fixture. One value for the whole competition |
+| Default rubber count (`AppSettings.maxScore`) | `/admin/manage` → Réglages | What every fixture inherits. Defaults to **8**, the standard interclub fixture |
+| Per-fixture rubber count (`Match.maxScore`) | `/admin` → Gérer cette rencontre | Overrides the default for one fixture. Empty inherits it |
 | Fixture date (`playedAt`) | `/admin` → Gérer cette rencontre | Rescheduling. `locksAt` always follows the new date |
 | Deadline (`locksAt`) | `/admin` → Gérer cette rencontre | Set it *after* rescheduling, or the reschedule overwrites it |
 | Delete a fixture | `/admin` → Gérer cette rencontre | Takes its predictions and their points with it. Not undoable |
@@ -178,11 +179,26 @@ so it drops the points as soon as `leaderboardTag` is busted. What was lost
 written to the AuditLog, whose `entityId` has no foreign key and therefore
 survives as the only record the fixture ever existed.
 
-The score cap is read at write time by both the prediction and the result
-actions, so the two can never disagree about what a legal score is. Lowering it
-leaves scores already above it standing — clamping them would rewrite the
-leaderboard to fix a typo in a setting — and the save reports how many there
-are. The settings row is created on first save; until then every read falls
+### The rubber count is both bounds at once
+
+A fixture is played over a fixed number of individual matches, and each one has
+exactly one winner — so the count caps each side *and* is the total the two
+scores must add up to. A 6-rubber fixture ends 6-0, 5-1, 4-2, 3-3, 2-4, 1-5 or
+0-6. **5-2 is not a low-scoring fixture, it is an impossible one**, which a
+per-side cap alone would happily accept.
+
+`src/lib/predictions/score-field.ts` owns that rule and reads no database:
+callers resolve `Match.maxScore ?? AppSettings.maxScore` and pass the number in.
+Both the prediction action and the result action resolve it at write time, so
+the two can never disagree about what a legal score is. On the client the two
+inputs are linked — typing one side fills the other — so the impossible state is
+never reachable rather than being rejected after the fact.
+
+Changing the count never rewrites existing rows. A 5-3 filed when the fixture
+was 8 rubbers is still what that member predicted, and silently turning it into
+something else would invent a prediction they never made; the save reports how
+many are now stranded instead, so an admin can see who needs to re-enter one.
+The settings row itself is created on first save — until then every read falls
 back to `DEFAULT_MAX_SCORE`, so a database that predates the table still works.
 
 ## Seeding

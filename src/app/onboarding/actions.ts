@@ -5,13 +5,10 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { nameField } from '@/lib/users/name-field'
 
 const onboardingSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, { message: 'Indiquez un pseudo (2 caractères minimum).' })
-    .max(60, { message: 'Ce pseudo est trop long (60 caractères maximum).' }),
+  name: nameField,
   password: z
     .string()
     .min(8, { message: 'Le mot de passe doit contenir au moins 8 caractères.' }),

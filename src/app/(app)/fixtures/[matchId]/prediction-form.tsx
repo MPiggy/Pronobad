@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from 'react'
 import { useFormStatus } from 'react-dom'
+import { ScorePairInput } from '@/components/score-pair-input'
 import { submitPrediction, type PredictionState } from './actions'
 
 /**
@@ -10,6 +11,9 @@ import { submitPrediction, type PredictionState } from './actions'
  * Two number inputs rather than a stepper or a slider: a member knows the
  * score they want ("5-3") and typing it is two taps, where stepping to it is
  * eight. `inputMode="numeric"` brings up the digit keypad on a phone.
+ *
+ * The two are linked — see `ScorePairInput`. A fixture of N rubbers produces N
+ * winners, so naming one side already names the other.
  */
 
 function SubmitButton({ hasPrediction }: { hasPrediction: boolean }) {
@@ -30,38 +34,6 @@ function SubmitButton({ hasPrediction }: { hasPrediction: boolean }) {
   )
 }
 
-function ScoreInput({
-  name,
-  label,
-  defaultValue,
-  maxScore,
-}: {
-  name: string
-  label: string
-  defaultValue?: number
-  maxScore: number
-}) {
-  return (
-    <div className="flex-1">
-      <label htmlFor={name} className="sr-only">
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type="number"
-        inputMode="numeric"
-        required
-        min={0}
-        max={maxScore}
-        defaultValue={defaultValue}
-        placeholder="0"
-        className="w-full rounded-xl border border-line bg-sheet px-4 py-3 text-center text-2xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
-      />
-    </div>
-  )
-}
-
 export function PredictionForm({
   matchId,
   homeTeamName,
@@ -75,8 +47,9 @@ export function PredictionForm({
   awayTeamName: string
   prediction: { homeScore: number; awayScore: number } | null
   /**
-   * The admin-set cap, read on the server and passed down. Only bounds the
-   * inputs — the action re-reads it and is what actually enforces it.
+   * The fixture's rubber count — its own override, or the competition default.
+   * Bounds the inputs and sets the total they must add up to. The action
+   * resolves it again server-side and is what actually enforces it.
    */
   maxScore: number
   /** Called once, right after a submission lands as `saved`. */
@@ -97,23 +70,23 @@ export function PredictionForm({
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="matchId" value={matchId} />
 
-      <div className="flex items-end gap-3">
-        <ScoreInput
-          name="homeScore"
-          label={homeTeamName}
-          defaultValue={prediction?.homeScore}
-          maxScore={maxScore}
-        />
-        <span aria-hidden className="pb-3 text-lg font-bold text-ink-soft">
-          –
-        </span>
-        <ScoreInput
-          name="awayScore"
-          label={awayTeamName}
-          defaultValue={prediction?.awayScore}
-          maxScore={maxScore}
-        />
-      </div>
+      <ScorePairInput
+        idPrefix={`prediction-${matchId}`}
+        homeName="homeScore"
+        awayName="awayScore"
+        homeLabel={homeTeamName}
+        awayLabel={awayTeamName}
+        maxScore={maxScore}
+        defaultHome={prediction?.homeScore}
+        defaultAway={prediction?.awayScore}
+        size="lg"
+        labels="hidden"
+      />
+
+      <p className="text-center text-xs text-ink-soft">
+        {maxScore} match{maxScore > 1 ? 's' : ''} — les deux scores totalisent{' '}
+        {maxScore}.
+      </p>
 
       {state.status === 'error' && (
         <p role="alert" className="text-sm text-loss">

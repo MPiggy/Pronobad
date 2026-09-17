@@ -2,11 +2,18 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
+import { Trash2 } from 'lucide-react'
+import { ScorePairInput } from '@/components/score-pair-input'
+import {
+  MAX_MAX_SCORE,
+  MIN_MAX_SCORE,
+} from '@/lib/predictions/score-field'
 import {
   deleteMatch,
   enterResult,
   updateLocksAt,
   updateMatchDate,
+  updateMatchMaxScore,
   withdrawResult,
   type AdminState,
 } from './actions'
@@ -86,36 +93,20 @@ function ResultForm({
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="matchId" value={matchId} />
 
-      <div className="flex items-end gap-3">
-        {[
-          { name: 'homeScore', label: homeTeamName, value: homeScore },
-          { name: 'awayScore', label: awayTeamName, value: awayScore },
-        ].map((field) => (
-          <div key={field.name} className="flex-1">
-            <label
-              htmlFor={`${matchId}-${field.name}`}
-              className="mb-1.5 block truncate text-xs font-medium text-ink-soft"
-            >
-              {field.label}
-            </label>
-            <input
-              id={`${matchId}-${field.name}`}
-              name={field.name}
-              type="number"
-              inputMode="numeric"
-              required
-              min={0}
-              max={maxScore}
-              defaultValue={field.value ?? undefined}
-              className="w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-center text-xl font-bold tabular-nums text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
-            />
-          </div>
-        ))}
-      </div>
+      <ScorePairInput
+        idPrefix={`result-${matchId}`}
+        homeName="homeScore"
+        awayName="awayScore"
+        homeLabel={homeTeamName}
+        awayLabel={awayTeamName}
+        maxScore={maxScore}
+        defaultHome={homeScore}
+        defaultAway={awayScore}
+      />
 
       <p className="text-xs text-ink-soft">
-        Maximum {maxScore} point{maxScore > 1 ? 's' : ''} par équipe — modifiable
-        dans Structure.
+        {maxScore} match{maxScore > 1 ? 's' : ''} — les deux scores totalisent{' '}
+        {maxScore}.
       </p>
 
       <StateMessage state={state} />
@@ -143,12 +134,74 @@ function WithdrawForm({ matchId }: { matchId: string }) {
 }
 
 /**
+ * How many rubbers this fixture is played over, when it differs from the
+ * competition default.
+ *
+ * Empty means "follow the default" rather than zero — the placeholder shows
+ * what that default currently is, so an admin can see what they are inheriting
+ * without leaving the page.
+ */
+function MaxScoreForm({
+  matchId,
+  maxScore,
+  defaultMaxScore,
+}: {
+  matchId: string
+  maxScore: number | null
+  defaultMaxScore: number
+}) {
+  const [state, formAction] = useActionState<AdminState, FormData>(
+    updateMatchMaxScore,
+    { status: 'idle' },
+  )
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <input type="hidden" name="matchId" value={matchId} />
+
+      <div>
+        <label
+          htmlFor={`${matchId}-maxScore`}
+          className="mb-1.5 block text-xs font-medium text-ink-soft"
+        >
+          Nombre de matchs joués
+        </label>
+        <input
+          id={`${matchId}-maxScore`}
+          name="maxScore"
+          type="number"
+          inputMode="numeric"
+          min={MIN_MAX_SCORE}
+          max={MAX_MAX_SCORE}
+          defaultValue={maxScore ?? ''}
+          placeholder={`${defaultMaxScore} (défaut)`}
+          className="num w-full rounded-xl border border-line bg-sheet px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-court focus-visible:ring-2 focus-visible:ring-court/30"
+        />
+      </div>
+
+      <p className="text-xs leading-relaxed text-ink-soft">
+        Détermine les pronostics possibles : les deux scores doivent totaliser
+        ce nombre. Laissez vide pour suivre le réglage général.
+      </p>
+
+      <StateMessage state={state} />
+
+      <SubmitButton variant="secondary">Modifier le format</SubmitButton>
+    </form>
+  )
+}
+
+/**
  * Deleting a fixture, and with it every prediction and every point earned on
  * it.
  *
- * The confirmation names what is actually at stake — how many predictions, and
- * whether points are already on the leaderboard — because "Supprimer cette
- * rencontre ?" gives an admin nothing to weigh, and this is not undoable.
+ * An icon button, not a full-width one: it sits at the end of a panel of
+ * labelled actions, and a red bar the same size as "Enregistrer le résultat"
+ * reads as an equal peer of them rather than the exceptional, irreversible
+ * one. The confirmation carries the words instead, and names what is actually
+ * at stake — how many predictions, and whether points are already on the
+ * leaderboard — because "Supprimer cette rencontre ?" gives an admin nothing
+ * to weigh.
  */
 function DeleteMatchForm({
   matchId,
@@ -189,12 +242,16 @@ function DeleteMatchForm({
     >
       <input type="hidden" name="matchId" value={matchId} />
       <StateMessage state={state} />
-      <button
-        type="submit"
-        className="w-full rounded-xl border border-loss/40 bg-transparent px-4 py-3 text-sm font-semibold text-loss transition-colors hover:bg-loss/10"
-      >
-        Supprimer la rencontre
-      </button>
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          aria-label="Supprimer la rencontre"
+          title="Supprimer la rencontre"
+          className="flex size-11 items-center justify-center rounded-xl border border-loss/40 bg-transparent text-loss transition-colors hover:bg-loss/10"
+        >
+          <Trash2 aria-hidden className="size-5" />
+        </button>
+      </div>
     </form>
   )
 }
@@ -293,6 +350,8 @@ export function MatchAdminForm({
   playedAtLocal,
   locksAtLocal,
   maxScore,
+  matchMaxScore,
+  defaultMaxScore,
   predictionCount,
 }: {
   matchId: string
@@ -304,8 +363,12 @@ export function MatchAdminForm({
   playedAtLocal: string
   /** `locksAt` pre-formatted as a Paris `datetime-local` value by the server. */
   locksAtLocal: string
-  /** The admin-set score cap, bounding the result inputs. */
+  /** This fixture's rubber count in force — its override, else the default. */
   maxScore: number
+  /** The fixture's own override, or null when it follows the default. */
+  matchMaxScore: number | null
+  /** The competition default, shown as the override field's placeholder. */
+  defaultMaxScore: number
   /** How many predictions deletion would take with it, for the confirmation. */
   predictionCount: number
 }) {
@@ -329,6 +392,12 @@ export function MatchAdminForm({
         />
 
         {hasResult && <WithdrawForm matchId={matchId} />}
+
+        <MaxScoreForm
+          matchId={matchId}
+          maxScore={matchMaxScore}
+          defaultMaxScore={defaultMaxScore}
+        />
 
         <DateForm matchId={matchId} defaultValue={playedAtLocal} />
 

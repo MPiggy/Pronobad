@@ -4,6 +4,7 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMatchesForUser } from '@/lib/predictions/queries'
 import { getMaxScore } from '@/lib/settings/queries'
+import { resolveMaxScore } from '@/lib/predictions/score-field'
 import { isLocked } from '@/lib/predictions/locking'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
@@ -106,7 +107,11 @@ async function HomeContent() {
               <ul className="space-y-3">
                 {open.map((match) => (
                   <li key={match.id}>
-                    <MatchModalTrigger match={match} now={now} maxScore={maxScore} />
+                    <MatchModalTrigger
+                      match={match}
+                      now={now}
+                      maxScore={resolveMaxScore(match.maxScore, maxScore)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -124,7 +129,11 @@ async function HomeContent() {
               <ul className="space-y-3">
                 {closed.map((match) => (
                   <li key={match.id}>
-                    <MatchModalTrigger match={match} now={now} maxScore={maxScore} />
+                    <MatchModalTrigger
+                      match={match}
+                      now={now}
+                      maxScore={resolveMaxScore(match.maxScore, maxScore)}
+                    />
                   </li>
                 ))}
               </ul>

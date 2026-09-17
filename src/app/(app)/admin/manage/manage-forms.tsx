@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
+import { Trash2 } from 'lucide-react'
 import {
   createMatch,
   createSeason,
@@ -62,11 +63,11 @@ const inputClass =
   'w-full rounded-md border border-line bg-sheet px-3 py-2 text-sm text-ink outline-none transition-colors focus-visible:border-court'
 
 /**
- * The score cap, applied to every prediction and every official result.
+ * The competition's default number of rubbers per fixture.
  *
- * Lives on this page rather than next to a fixture because it is one value for
- * the whole competition — a fixture-by-fixture field would be twenty chances
- * to set it inconsistently.
+ * Lives on this page because it is the value every fixture inherits — setting
+ * it here once beats setting it twenty times. A fixture played over a
+ * different number overrides it from the admin page instead.
  */
 export function SettingsForm({ maxScore }: { maxScore: number }) {
   const [state, formAction] = useActionState<ManageState, FormData>(
@@ -78,7 +79,7 @@ export function SettingsForm({ maxScore }: { maxScore: number }) {
     <form action={formAction} className="space-y-3">
       <div>
         <label htmlFor="settings-max-score" className={labelClass}>
-          Points maximum par équipe
+          Matchs par rencontre (défaut)
         </label>
         <input
           id="settings-max-score"
@@ -94,13 +95,14 @@ export function SettingsForm({ maxScore }: { maxScore: number }) {
       </div>
 
       <p className="text-xs leading-relaxed text-ink-soft">
-        Le nombre de rencontres individuelles d’un match d’interclub — 8 en
-        championnat de France. Borne les pronostics et les résultats. Les scores
-        déjà saisis ne sont pas modifiés.
+        Le nombre de matchs joués dans une rencontre d’interclub — 8 en
+        championnat de France. Les deux scores d’un pronostic doivent totaliser
+        ce nombre. Chaque rencontre peut le remplacer depuis l’onglet Admin. Les
+        scores déjà saisis ne sont pas modifiés.
       </p>
 
       <StateMessage state={state} />
-      <SubmitButton>Enregistrer le maximum</SubmitButton>
+      <SubmitButton>Enregistrer le format</SubmitButton>
     </form>
   )
 }
@@ -270,12 +272,16 @@ function DeleteTeamForm({ team }: { team: TeamRow }) {
     >
       <input type="hidden" name="teamId" value={team.id} />
       <StateMessage state={state} />
-      <button
-        type="submit"
-        className="w-full rounded-md border border-loss/40 bg-transparent px-4 py-2.5 text-sm font-semibold text-loss transition-colors hover:bg-loss/10"
-      >
-        Supprimer l’équipe
-      </button>
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          aria-label={`Supprimer l’équipe ${team.name}`}
+          title="Supprimer l’équipe"
+          className="flex size-11 items-center justify-center rounded-md border border-loss/40 bg-transparent text-loss transition-colors hover:bg-loss/10"
+        >
+          <Trash2 aria-hidden className="size-5" />
+        </button>
+      </div>
     </form>
   )
 }

@@ -28,6 +28,10 @@ const matchWithPredictionSelect = (userId: string) =>
     status: true,
     homeScore: true,
     awayScore: true,
+    // The fixture's rubber-count override; null follows the competition
+    // default. Selected here because every screen that offers score entry
+    // needs it to bound and total the inputs.
+    maxScore: true,
     resultEnteredAt: true,
     homeTeam: { select: { name: true } },
     awayTeam: { select: { name: true } },

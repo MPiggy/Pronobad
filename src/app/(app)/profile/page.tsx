@@ -9,6 +9,7 @@ import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
+import { NameForm } from './name-form'
 import { signOut } from './actions'
 
 export const metadata: Metadata = {
@@ -73,11 +74,16 @@ async function ProfileContent() {
   if (!season) {
     return (
       <PageShell title="Profil" subtitle={user.name}>
-        <EmptyState
-          icon="👤"
-          title="Aucune saison ouverte"
-          body="Votre historique apparaîtra dès qu’une saison sera en cours."
-        />
+        {/* Renaming doesn't depend on a season existing, so it stays reachable
+            on this branch too. */}
+        <div className="space-y-6">
+          <NameForm name={user.name} />
+          <EmptyState
+            icon="👤"
+            title="Aucune saison ouverte"
+            body="Votre historique apparaîtra dès qu’une saison sera en cours."
+          />
+        </div>
       </PageShell>
     )
   }
@@ -122,6 +128,8 @@ async function ProfileContent() {
           <Stat value={me ? `${me.rank}${me.rank === 1 ? 'er' : 'e'}` : '—'} label="au classement" />
           <Stat value={exactCount} label={`score${exactCount > 1 ? 's' : ''} exact${exactCount > 1 ? 's' : ''}`} />
         </section>
+
+        <NameForm name={user.name} />
 
         <section aria-labelledby="history-heading">
           <h2

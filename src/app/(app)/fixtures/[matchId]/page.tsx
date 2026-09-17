@@ -6,6 +6,7 @@ import { Clock } from 'lucide-react'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { getMatchForUser } from '@/lib/predictions/queries'
 import { getMaxScore } from '@/lib/settings/queries'
+import { resolveMaxScore } from '@/lib/predictions/score-field'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
 import {
@@ -141,7 +142,7 @@ async function MatchContent({
               homeTeamName={match.homeTeam.name}
               awayTeamName={match.awayTeam.name}
               prediction={prediction}
-              maxScore={maxScore}
+              maxScore={resolveMaxScore(match.maxScore, maxScore)}
             />
           </section>
         )}

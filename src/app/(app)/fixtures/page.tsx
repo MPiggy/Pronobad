@@ -5,6 +5,7 @@ import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getNextMatchForUser } from '@/lib/predictions/queries'
 import { getMaxScore } from '@/lib/settings/queries'
+import { resolveMaxScore } from '@/lib/predictions/score-field'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonShell } from '@/components/skeleton'
 import { NextMatchHero } from '../home/next-match-hero'
@@ -64,7 +65,11 @@ async function FixturesContent() {
   return (
     <PageShell title="Rencontres" subtitle={season.name}>
       {match ? (
-        <NextMatchHero match={match} now={now} maxScore={maxScore} />
+        <NextMatchHero
+          match={match}
+          now={now}
+          maxScore={resolveMaxScore(match.maxScore, maxScore)}
+        />
       ) : (
         <EmptyState
           icon="🏸"

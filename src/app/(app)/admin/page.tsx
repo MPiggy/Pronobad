@@ -6,6 +6,7 @@ import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMaxScore } from '@/lib/settings/queries'
+import { resolveMaxScore } from '@/lib/predictions/score-field'
 import { isLocked } from '@/lib/predictions/locking'
 import {
   formatMatchDateTime,
@@ -89,6 +90,7 @@ async function AdminContent() {
       round: true,
       homeScore: true,
       awayScore: true,
+      maxScore: true,
       resultEnteredAt: true,
       homeTeam: { select: { name: true } },
       awayTeam: { select: { name: true } },
@@ -168,7 +170,9 @@ async function AdminContent() {
                   awayScore={match.awayScore}
                   playedAtLocal={toParisDateTimeLocal(match.playedAt)}
                   locksAtLocal={toParisDateTimeLocal(match.locksAt)}
-                  maxScore={maxScore}
+                  maxScore={resolveMaxScore(match.maxScore, maxScore)}
+                  matchMaxScore={match.maxScore}
+                  defaultMaxScore={maxScore}
                   predictionCount={match._count.predictions}
                 />
               </li>

@@ -30,15 +30,24 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="antialiased">
-        <Image
-          src={backgroundImage}
-          alt=""
-          fill
-          preload
-          placeholder="blur"
-          sizes="100vw"
-          className="fixed inset-0 -z-20 object-cover"
-        />
+        {/*
+          The pinning lives on this wrapper, not on the image. `fill` sets
+          `position: absolute` as an *inline* style, which beats any `fixed`
+          class — so a `fixed` image is still absolutely positioned against the
+          document and scrolls away with the content, while the tint below
+          stays put. Absolute inside a fixed parent gives the intended result.
+        */}
+        <div className="fixed inset-0 -z-20">
+          <Image
+            src={backgroundImage}
+            alt=""
+            fill
+            preload
+            placeholder="blur"
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
         <div className="fixed inset-0 -z-10 bg-shuttle/70" />
         <ToastProvider>{children}</ToastProvider>
       </body>

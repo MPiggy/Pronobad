@@ -7,7 +7,12 @@ import { ForbiddenError, NotFoundError, requireMatchManager } from '@/lib/auth/g
 import { scoreMatch, unscoreMatch } from '@/lib/scoring/engine'
 import { parseParisDateTimeLocal } from '@/lib/format'
 import { matchesTag, matchTag } from '@/lib/predictions/queries'
-import { scoreFieldFor } from '@/lib/predictions/score-field'
+import {
+  optionalMaxScoreField,
+  resolveMaxScore,
+  scoreFieldFor,
+  withPossibleScore,
+} from '@/lib/predictions/score-field'
 import { getMaxScore } from '@/lib/settings/queries'
 import { leaderboardTag } from '@/lib/leaderboard/queries'
 import { MatchStatus } from '@/generated/prisma/enums'
@@ -35,17 +40,112 @@ function toErrorState(error: unknown): AdminState {
   throw error
 }
 
+/** The fixture the result belongs to, before any score is looked at. */
+const targetSchema = z.object({ matchId: z.string().min(1) })
+
+const matchMaxScoreSchema = z.object({
+  matchId: z.string().min(1),
+  maxScore: optionalMaxScoreField,
+})
+
 /**
- * Built per call rather than once at module load: the cap is an admin setting,
- * so a schema frozen at import time would keep enforcing the value the server
- * happened to boot with.
+ * Overrides how many rubbers one fixture is played over, or clears the
+ * override so it follows the competition default again.
+ *
+ * Changing this after predictions are in does not rewrite them: a 5-3 filed
+ * when the fixture was 8 rubbers is still what that member predicted, and
+ * silently turning it into something else would be inventing a prediction they
+ * never made. They are counted and reported instead, so an admin can see that
+ * some members now need to re-enter a scoreline that has become impossible.
+ */
+export async function updateMatchMaxScore(
+  _prevState: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const parsed = matchMaxScoreSchema.safeParse({
+    matchId: formData.get('matchId'),
+    maxScore: formData.get('maxScore'),
+  })
+
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: parsed.error.issues[0]?.message ?? 'Valeur invalide.',
+    }
+  }
+
+  const { matchId, maxScore } = parsed.data
+
+  try {
+    const actor = await requireMatchManager(matchId)
+
+    const before = await db.match.findUnique({
+      where: { id: matchId },
+      select: { seasonId: true, maxScore: true },
+    })
+
+    if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
+
+    await db.match.update({
+      where: { id: matchId },
+      data: { maxScore },
+    })
+
+    await db.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: 'MATCH_MAX_SCORE_CHANGED',
+        entity: 'Match',
+        entityId: matchId,
+        before: { maxScore: before.maxScore },
+        after: { maxScore },
+      },
+    })
+
+    revalidatePath('/admin')
+    updateTag(matchesTag(before.seasonId))
+    updateTag(matchTag(matchId))
+
+    const effective = resolveMaxScore(maxScore, await getMaxScore())
+
+    // Predictions whose two scores no longer add up to the rubber count. Done
+    // with a raw comparison because Prisma cannot express "column + column" in
+    // a `where`.
+    const [stranded] = await db.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "Prediction"
+      WHERE "matchId" = ${matchId}
+        AND "homeScore" + "awayScore" <> ${effective}
+    `
+
+    const count = Number(stranded?.count ?? 0)
+    const scope = maxScore === null ? 'défaut' : `${maxScore} matchs`
+
+    return {
+      status: 'saved',
+      message:
+        count === 0
+          ? `Rencontre en ${effective} matchs (${scope}).`
+          : `Rencontre en ${effective} matchs (${scope}). ${count} pronostic${count > 1 ? 's' : ''} ne tota${count > 1 ? 'lisent' : 'lise'} plus ${effective} et ${count > 1 ? 'doivent' : 'doit'} être ressaisi${count > 1 ? 's' : ''}.`,
+    }
+  } catch (error) {
+    return toErrorState(error)
+  }
+}
+
+/**
+ * Built per call rather than once at module load: the rubber count belongs to
+ * the fixture, so a schema frozen at import time would enforce whichever value
+ * the server happened to boot with.
  */
 const resultSchemaFor = (maxScore: number) =>
-  z.object({
-    matchId: z.string().min(1),
-    homeScore: scoreFieldFor(maxScore),
-    awayScore: scoreFieldFor(maxScore),
-  })
+  withPossibleScore(
+    z.object({
+      homeScore: scoreFieldFor(maxScore),
+      awayScore: scoreFieldFor(maxScore),
+    }),
+    maxScore,
+  )
 
 /**
  * Records a fixture's official result and freezes the points.
@@ -57,24 +157,19 @@ export async function enterResult(
   _prevState: AdminState,
   formData: FormData,
 ): Promise<AdminState> {
-  const parsed = resultSchemaFor(await getMaxScore()).safeParse({
-    matchId: formData.get('matchId'),
-    homeScore: formData.get('homeScore'),
-    awayScore: formData.get('awayScore'),
-  })
+  const target = targetSchema.safeParse({ matchId: formData.get('matchId') })
 
-  if (!parsed.success) {
-    return {
-      status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Résultat invalide.',
-    }
+  if (!target.success) {
+    return { status: 'error', message: 'Rencontre invalide.' }
   }
 
-  const { matchId, homeScore, awayScore } = parsed.data
+  const matchId = target.data.matchId
 
   try {
     const actor = await requireMatchManager(matchId)
 
+    // Loaded before the scores are parsed: the fixture carries the rubber
+    // count they have to be judged against.
     const before = await db.match.findUnique({
       where: { id: matchId },
       select: {
@@ -83,10 +178,27 @@ export async function enterResult(
         awayScore: true,
         status: true,
         resultEnteredAt: true,
+        maxScore: true,
       },
     })
 
     if (!before) return { status: 'error', message: 'Cette rencontre n’existe pas.' }
+
+    const parsed = resultSchemaFor(
+      resolveMaxScore(before.maxScore, await getMaxScore()),
+    ).safeParse({
+      homeScore: formData.get('homeScore'),
+      awayScore: formData.get('awayScore'),
+    })
+
+    if (!parsed.success) {
+      return {
+        status: 'error',
+        message: parsed.error.issues[0]?.message ?? 'Résultat invalide.',
+      }
+    }
+
+    const { homeScore, awayScore } = parsed.data
 
     // `resultEnteredAt` is a Date; the audit columns are Json, so it is
     // recorded as an ISO string like every other timestamp in this file.
