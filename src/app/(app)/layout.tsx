@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from 'react'
 import { BottomNav } from '@/components/bottom-nav'
+import { InstallBanner } from '@/components/install-prompt'
 
 /**
  * Shared shell for every signed-in tab (fixtures, leaderboard, profile,
@@ -19,6 +20,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <Suspense>
       {children}
+      {/* Sits above the nav and outlives tab navigation, like the nav itself. */}
+      <InstallBanner />
       <BottomNav />
     </Suspense>
   )

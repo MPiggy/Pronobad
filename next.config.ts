@@ -63,6 +63,14 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // The service worker is the one file that must never be served stale:
+        // a cached copy would pin every installed member to an old worker.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
     ]
   },
 }

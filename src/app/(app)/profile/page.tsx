@@ -9,6 +9,7 @@ import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatMatchDay, formatScore } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
+import { InstallCard } from '@/components/install-prompt'
 import { NameForm } from './name-form'
 import { signOut } from './actions'
 
@@ -78,6 +79,7 @@ async function ProfileContent() {
             on this branch too. */}
         <div className="space-y-6">
           <NameForm name={user.name} />
+          <InstallCard />
           <EmptyState
             icon="👤"
             title="Aucune saison ouverte"
@@ -130,6 +132,8 @@ async function ProfileContent() {
         </section>
 
         <NameForm name={user.name} />
+
+        <InstallCard />
 
         <section aria-labelledby="history-heading">
           <h2

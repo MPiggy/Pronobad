@@ -40,7 +40,12 @@ export const config = {
     /*
      * Every path except static assets and images. Running the session refresh
      * on a static file would cost a Supabase round-trip per asset for nothing.
+     *
+     * The manifest and the service worker are listed explicitly: they are
+     * fetched by the browser itself, with no session to gate them on, and
+     * redirecting either to /login would quietly make the app uninstallable —
+     * a service worker script is not even allowed to redirect.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
   ],
 }
