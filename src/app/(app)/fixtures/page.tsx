@@ -46,7 +46,7 @@ function FixturesSkeleton() {
         ))}
       </div>
       <Skeleton className="mt-5 h-[290px] rounded-3xl" />
-      <Skeleton className="mt-5 h-[130px] rounded-2xl" />
+      <Skeleton className="mt-5 h-[170px] rounded-2xl" />
       <Skeleton className="mx-auto mt-6 h-5 w-48" />
     </SkeletonShell>
   )

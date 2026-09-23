@@ -23,6 +23,9 @@
   --color-sheet: #fcfcfc;
 
   --color-win: oklch(0.6 0.16 150);
+  /* `win` text on a pale green paper tint, and on the dark court. */
+  --color-win-dark: oklch(0.42 0.13 150);
+  --color-win-light: oklch(0.78 0.15 150);
   --color-partial: oklch(0.68 0.11 230);
   --color-loss: oklch(0.6 0.19 25);
   --color-pending: oklch(0.7 0.13 75);
@@ -110,6 +113,29 @@ select {
 .animate-backdrop-out { animation: backdrop-out 150ms ease-in forwards; }
 .animate-drawer-in { animation: drawer-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-drawer-out { animation: drawer-out 150ms ease-in forwards; }
+
+/*
+ * Fixture card as a bet slip: the card is two halves, and a semicircle is cut
+ * from the top and bottom of the edge they share, like a ticket's tear-off
+ * stub. Each half masks its own side of the notch.
+ */
+.ticket-main {
+  -webkit-mask:
+    radial-gradient(circle 9px at 100% 0, #0000 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at 100% 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle 9px at 100% 0, #0000 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at 100% 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.ticket-stub {
+  -webkit-mask:
+    radial-gradient(circle 9px at 0 0, #0000 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at 0 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle 9px at 0 0, #0000 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at 0 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
 
 /* Toast: slides up from the bottom nav and fades, quick enough to not block a tap. */
 @keyframes toast-in {

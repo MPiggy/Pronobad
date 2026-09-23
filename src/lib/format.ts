@@ -35,6 +35,23 @@ export function formatMatchDay(date: Date): string {
   return dayFormatter.format(date)
 }
 
+/**
+ * `{ weekday: 'sam', day: '4', month: 'oct' }` — the stacked date block on a
+ * fixture card. Built from the same formatter as `formatMatchDay`, with the
+ * abbreviation dots dropped: stacked on three lines they read as stray marks.
+ */
+export function formatDateBlock(date: Date): {
+  weekday: string
+  day: string
+  month: string
+} {
+  const parts = dayFormatter.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((entry) => entry.type === type)?.value ?? '').replace(/\.$/, '')
+
+  return { weekday: part('weekday'), day: part('day'), month: part('month') }
+}
+
 /** "4 octobre 2025" — used where the year matters, like history. */
 export function formatFullDate(date: Date): string {
   return dayWithYearFormatter.format(date)
