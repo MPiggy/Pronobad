@@ -14,7 +14,8 @@ export function PageShell({
   action,
   children,
 }: {
-  title: string
+  /** Usually plain text; the profile adds its rename pencil beside the pseudo. */
+  title: ReactNode
   subtitle?: ReactNode
   action?: ReactNode
   children: ReactNode

@@ -1,7 +1,10 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
+import { Pencil } from 'lucide-react'
+import { Modal } from '@/components/modal'
+import { useToast } from '@/components/toast'
 import {
   NAME_MAX_LENGTH,
   NAME_MIN_LENGTH,
@@ -9,33 +12,47 @@ import {
 import { updateName, type ProfileState } from './actions'
 
 /**
- * Editing your own pseudo.
+ * Editing your own pseudo: a pencil beside the page title, opening the form
+ * in a modal.
  *
- * Behind a `<details>` like the admin edit forms: the profile is a screen a
- * member opens to read their history, and a permanently-open text input at the
- * top of it would be noise on every visit for a change made once a season.
+ * The pseudo *is* the profile's title, so the edit affordance sits on it
+ * rather than in a card of its own — a permanently-open text input would be
+ * noise on every visit for a change made once a season.
  */
-export function NameForm({ name }: { name: string }) {
+export function NameEditButton({ name }: { name: string }) {
+  const [open, setOpen] = useState(false)
+  const [closeRequest, setCloseRequest] = useState(0)
+  const showToast = useToast()
+
   return (
-    <section className="rounded-2xl border border-line bg-sheet p-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-ink-soft">Pseudo</p>
-          <p className="mt-0.5 truncate font-medium text-ink">{name}</p>
-        </div>
-      </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Modifier le pseudo"
+        // The global 44px minimum would push the title line down; the negative
+        // margin keeps the full touch target without growing the header.
+        className="-my-2 flex shrink-0 items-center justify-center px-1.5 text-shuttle-text-soft active:text-shuttle-text"
+      >
+        <Pencil aria-hidden className="size-4" />
+      </button>
 
-      <details className="group mt-2">
-        <summary className="cursor-pointer list-none text-xs font-medium text-court-dark marker:content-none">
-          <span className="group-open:hidden">Modifier</span>
-          <span className="hidden group-open:inline">Fermer</span>
-        </summary>
-
-        <div className="mt-3">
-          <EditForm name={name} />
-        </div>
-      </details>
-    </section>
+      {open && (
+        <Modal
+          title="Modifier le pseudo"
+          onClose={() => setOpen(false)}
+          requestClose={closeRequest}
+        >
+          <EditForm
+            name={name}
+            onSaved={(message) => {
+              showToast(message)
+              setCloseRequest((count) => count + 1)
+            }}
+          />
+        </Modal>
+      )}
+    </>
   )
 }
 
@@ -53,11 +70,22 @@ function SubmitButton() {
   )
 }
 
-function EditForm({ name }: { name: string }) {
+function EditForm({
+  name,
+  onSaved,
+}: {
+  name: string
+  onSaved: (message: string) => void
+}) {
   const [state, formAction] = useActionState<ProfileState, FormData>(
     updateName,
     { status: 'idle' },
   )
+
+  // Each submission returns a fresh state object, so this fires once per save.
+  useEffect(() => {
+    if (state.status === 'saved') onSaved(state.message)
+  }, [state]) // eslint-disable-line react-hooks/exhaustive-deps -- `onSaved` is a new closure every render
 
   return (
     <form action={formAction} className="space-y-3">
@@ -84,12 +112,6 @@ function EditForm({ name }: { name: string }) {
 
       {state.status === 'error' && (
         <p role="alert" className="text-sm text-loss">
-          {state.message}
-        </p>
-      )}
-
-      {state.status === 'saved' && (
-        <p role="status" className="text-sm font-medium text-court-dark">
           {state.message}
         </p>
       )}

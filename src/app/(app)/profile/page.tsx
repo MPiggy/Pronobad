@@ -1,29 +1,21 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { requireOnboardedUser } from '@/lib/auth/session'
 import { getCurrentSeason } from '@/lib/seasons'
-import { getPredictionHistory } from '@/lib/predictions/queries'
+import { getMatchesForUser } from '@/lib/predictions/queries'
 import { getLeaderboard } from '@/lib/leaderboard/queries'
-import { explainRule, ScoringRule } from '@/lib/scoring/rules'
-import { formatMatchDay, formatScore } from '@/lib/format'
+import { getMaxScore } from '@/lib/settings/queries'
+import { resolveMaxScore } from '@/lib/predictions/score-field'
+import { formatRank } from '@/lib/format'
 import { EmptyState, PageShell } from '@/components/page-shell'
 import { Skeleton, SkeletonCards, SkeletonShell } from '@/components/skeleton'
 import { InstallCard } from '@/components/install-prompt'
-import { NameForm } from './name-form'
-import { signOut } from './actions'
+import { HistoryList } from './history-list'
+import { NameEditButton } from './name-form'
+import { ProfileMenu } from './profile-menu'
 
 export const metadata: Metadata = {
   title: 'Profil — BetClichy',
-}
-
-function Stat({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div className="flex-1 rounded-2xl border border-line bg-sheet px-3 py-4 text-center">
-      <p className="text-2xl font-bold tabular-nums text-ink">{value}</p>
-      <p className="mt-1 text-xs leading-tight text-ink-soft">{label}</p>
-    </div>
-  )
 }
 
 /**
@@ -31,8 +23,8 @@ function Stat({ value, label }: { value: string | number; label: string }) {
  * they have made with the points it earned.
  *
  * The history exists to answer "why do I have this many points" — so each row
- * shows the prediction, the actual result and the rule that was applied,
- * rather than just a number.
+ * is the same bet slip as the fixture list: the prediction, the actual result,
+ * the rule that was applied and the points it earned, rather than just a number.
  *
  * `requireOnboardedUser` reads the session cookie, and every read below is
  * scoped to that user, so the whole page is runtime-bound — Suspense is what
@@ -46,23 +38,94 @@ export default function ProfilePage() {
   )
 }
 
-/** The stat row, the history heading, then the prediction cards under it. */
+/** The season card, the history heading and filters, then the cards under it. */
 function ProfileSkeleton() {
   return (
     <SkeletonShell>
       <div className="space-y-6">
-        <div className="flex gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[86px] flex-1 rounded-2xl" />
-          ))}
-        </div>
+        <Skeleton className="h-[150px] rounded-2xl" />
 
         <div>
-          <Skeleton className="mb-3 h-4 w-36" />
-          <SkeletonCards count={4} className="h-[116px]" />
+          <Skeleton className="mb-3 h-4 w-28" />
+          <Skeleton className="mb-3 h-11 rounded-full" />
+          <SkeletonCards count={4} className="h-[104px]" />
         </div>
       </div>
     </SkeletonShell>
+  )
+}
+
+/** The pseudo as the page title, with its edit pencil beside it. */
+function NameTitle({ name }: { name: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1">
+      <span className="truncate">{name}</span>
+      <NameEditButton name={name} />
+    </span>
+  )
+}
+
+/**
+ * Rank, points, exact scores and hit rate on one dark card — the same surface
+ * as the next-match hero and the last-result card, so the season's numbers
+ * read as part of the same set.
+ *
+ * A member who hasn't scored yet has no leaderboard row, so `rank` is null
+ * rather than a made-up last place.
+ */
+function SeasonCard({
+  rank,
+  rankedCount,
+  points,
+  exactCount,
+  hitRate,
+}: {
+  rank: number | null
+  rankedCount: number
+  points: number
+  exactCount: number
+  /** Share of scored predictions that earned points, or null before any is scored. */
+  hitRate: number | null
+}) {
+  const stats = [
+    { label: points > 1 ? 'points' : 'point', value: String(points) },
+    {
+      label: exactCount > 1 ? 'scores exacts' : 'score exact',
+      value: String(exactCount),
+    },
+    {
+      label: 'de réussite',
+      // A narrow no-break space before "%", as French typesets it.
+      value: hitRate === null ? '—' : `${Math.round(hitRate * 100)} %`,
+    },
+  ]
+
+  return (
+    <section
+      aria-label="Votre saison"
+      className="rounded-2xl border border-court/35 bg-[radial-gradient(120%_90%_at_100%_0%,rgb(242_193_104/0.14),transparent_60%),linear-gradient(180deg,rgb(235_239_249/0.07),rgb(235_239_249/0.03))] p-4"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-shuttle-text-soft">
+        Classement
+      </p>
+      <p className="mt-1 flex items-baseline gap-2">
+        <span className="text-4xl leading-none font-black tracking-tight tabular-nums text-court">
+          {rank === null ? '—' : formatRank(rank)}
+        </span>
+        <span className="text-sm text-shuttle-text-soft">
+          {rank === null ? 'Pas encore classé' : `sur ${rankedCount}`}
+        </span>
+      </p>
+
+      <dl className="mt-4 grid grid-cols-3 divide-x divide-shuttle-text/10 border-t border-shuttle-text/10 pt-3 text-center">
+        {stats.map(({ label, value }) => (
+          <div key={label} className="flex flex-col-reverse px-1">
+            <dt className="text-[11px] leading-tight text-shuttle-text-soft">{label}</dt>
+            <dd className="text-xl font-extrabold tabular-nums text-shuttle-text">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
 
@@ -72,75 +135,61 @@ async function ProfileContent() {
     getCurrentSeason(),
   ])
 
+  const header = {
+    title: <NameTitle name={user.name} />,
+    action: <ProfileMenu isAdmin={user.isSuperadmin} />,
+  }
+
   if (!season) {
     return (
-      <PageShell title="Profil" subtitle={user.name}>
-        {/* Renaming doesn't depend on a season existing, so it stays reachable
-            on this branch too. */}
+      // Renaming doesn't depend on a season existing, so the header — and its
+      // pencil — stays the same on this branch too.
+      <PageShell {...header}>
         <div className="space-y-6">
-          <NameForm name={user.name} />
-          <InstallCard />
           <EmptyState
             icon="👤"
             title="Aucune saison ouverte"
             body="Votre historique apparaîtra dès qu’une saison sera en cours."
           />
+          <InstallCard />
         </div>
       </PageShell>
     )
   }
 
-  const [history, leaderboard] = await Promise.all([
-    getPredictionHistory({ userId: user.id, seasonId: season.id }),
+  const [matches, leaderboard, maxScore] = await Promise.all([
+    getMatchesForUser({ seasonId: season.id, userId: user.id }),
     getLeaderboard({ seasonId: season.id }),
+    getMaxScore(),
   ])
 
+  // Every fixture the member predicted, latest first — drawn with the same
+  // cards as the fixture list, so a row opens the same modal.
+  const history = matches.filter((match) => match.prediction).reverse()
+  // One timestamp for the whole render, so no two cards disagree on lock.
+  const now = new Date()
+
   const me = leaderboard.find((row) => row.userId === user.id)
-  const points = me?.points ?? 0
-  const exactCount = me?.exactCount ?? 0
+  const scored = history.filter((match) => match.prediction?.score)
+  const won = scored.filter((match) => (match.prediction?.score?.points ?? 0) > 0)
 
   return (
-    <PageShell
-      title="Profil"
-      subtitle={user.name}
-      action={
-        <div className="flex shrink-0 items-center gap-2">
-          {user.isSuperadmin && (
-            <Link
-              href="/admin"
-              className="rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
-            >
-              Admin
-            </Link>
-          )}
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="rounded-lg border border-line bg-sheet px-3 py-2 text-sm font-medium text-ink-soft"
-            >
-              Déconnexion
-            </button>
-          </form>
-        </div>
-      }
-    >
+    <PageShell {...header} subtitle={season.name}>
       <div className="space-y-6">
-        <section aria-label="Statistiques de la saison" className="flex gap-3">
-          <Stat value={points} label="points" />
-          <Stat value={me ? `${me.rank}${me.rank === 1 ? 'er' : 'e'}` : '—'} label="au classement" />
-          <Stat value={exactCount} label={`score${exactCount > 1 ? 's' : ''} exact${exactCount > 1 ? 's' : ''}`} />
-        </section>
-
-        <NameForm name={user.name} />
-
-        <InstallCard />
+        <SeasonCard
+          rank={me?.rank ?? null}
+          rankedCount={leaderboard.length}
+          points={me?.points ?? 0}
+          exactCount={me?.exactCount ?? 0}
+          hitRate={scored.length === 0 ? null : won.length / scored.length}
+        />
 
         <section aria-labelledby="history-heading">
           <h2
             id="history-heading"
             className="mb-3 text-sm font-semibold uppercase tracking-wide text-shuttle-text-soft"
           >
-            Historique · {season.name}
+            Historique
           </h2>
 
           {history.length === 0 ? (
@@ -150,73 +199,18 @@ async function ProfileContent() {
               body="Vos pronostics apparaîtront ici. Rendez-vous dans l’onglet Rencontres pour commencer."
             />
           ) : (
-            <ul className="space-y-3">
-              {history.map((row) => {
-                const { match } = row
-                const hasResult =
-                  match.homeScore !== null && match.awayScore !== null
-
-                return (
-                  <li key={row.id}>
-                    <Link
-                      href={`/fixtures/${match.id}`}
-                      className="block rounded-2xl border border-line bg-sheet p-4 transition-colors active:bg-shuttle"
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <time
-                          dateTime={match.playedAt.toISOString()}
-                          className="text-xs font-medium text-ink-soft"
-                        >
-                          {formatMatchDay(match.playedAt)}
-                        </time>
-
-                        {row.score ? (
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              row.score.ruleApplied === ScoringRule.ExactScore
-                                ? 'bg-win/15 text-ink'
-                                : row.score.points > 0
-                                  ? 'bg-court-light text-court-dark'
-                                  : 'bg-loss/10 text-ink-soft'
-                            }`}
-                          >
-                            +{row.score.points} ·{' '}
-                            {explainRule(row.score.ruleApplied as ScoringRule)}
-                          </span>
-                        ) : (
-                          <span className="shrink-0 rounded-full bg-pending/15 px-2.5 py-1 text-xs font-semibold text-ink">
-                            En attente
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="truncate text-sm font-medium text-ink">
-                        {match.homeTeam.name} — {match.awayTeam.name}
-                      </p>
-
-                      <div className="mt-2 flex gap-4 text-xs text-ink-soft">
-                        <span>
-                          Pronostic :{' '}
-                          <span className="font-semibold tabular-nums text-ink">
-                            {formatScore(row.homeScore, row.awayScore)}
-                          </span>
-                        </span>
-                        {hasResult && (
-                          <span>
-                            Résultat :{' '}
-                            <span className="font-semibold tabular-nums text-ink">
-                              {formatScore(match.homeScore!, match.awayScore!)}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+            <HistoryList
+              now={now}
+              entries={history.map((match) => ({
+                match,
+                maxScore: resolveMaxScore(match.maxScore, maxScore),
+              }))}
+            />
           )}
         </section>
+
+        {/* Renders nothing once the app is installed, or where it can't be. */}
+        <InstallCard />
       </div>
     </PageShell>
   )
