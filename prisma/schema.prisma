@@ -58,11 +58,30 @@ model Team {
   seasonId String
   season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
+  logo TeamLogo?
+
   homeMatches Match[] @relation("HomeTeam")
   awayMatches Match[] @relation("AwayTeam")
 
   @@unique([seasonId, name])
   @@index([seasonId])
+}
+
+/// A team's crest, stored as the small WebP that src/lib/teams/logo-image.ts
+/// makes of every upload, and served by src/app/team-logos/[file]/route.ts.
+///
+/// Its own table rather than a `Bytes` column on Team: every screen lists
+/// teams, and a column there would ride along on any query that forgot to
+/// `select` around it. Here the bytes load only when asked for by name.
+model TeamLogo {
+  teamId String @id
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  data Bytes
+
+  /// Doubles as the cache-busting version in the logo's URL — see
+  /// `teamLogoUrl` in src/lib/teams/logo.ts.
+  updatedAt DateTime @updatedAt
 }
 
 model User {

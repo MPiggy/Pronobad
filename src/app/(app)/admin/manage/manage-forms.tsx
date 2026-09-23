@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
-import { Pencil, Plus } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ImageIcon, Pencil, Plus } from 'lucide-react'
 import { Modal } from '@/components/modal'
+import { TeamLogo } from '@/components/team-logo'
 import { useToast } from '@/components/toast'
 import {
   Field,
@@ -16,6 +17,12 @@ import {
 } from '@/components/form-controls'
 import type { SavedFormState } from '@/lib/form-state'
 import { MAX_MAX_SCORE, MIN_MAX_SCORE } from '@/lib/predictions/score-field'
+import {
+  LOGO_ACCEPT,
+  MAX_LOGO_UPLOAD_BYTES,
+  teamLogoUrl,
+  type TeamDisplay,
+} from '@/lib/teams/logo'
 import {
   createSeason,
   createTeam,
@@ -138,6 +145,108 @@ function SeasonForm({
   )
 }
 
+/**
+ * The logo picker shared by the create and edit forms: a preview tile, the
+ * file input, and — when the team already has a logo — a box to remove it.
+ *
+ * The preview is the file as picked, not as it will be stored: the server
+ * trims and shrinks it, so the saved logo can sit a little larger in its tile.
+ * Oversized files are refused here, before the upload: past the server
+ * action's body limit, the server could only fail without a message.
+ */
+function LogoField({ id, team }: { id: string; team?: TeamRow }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [remove, setRemove] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!preview) return
+    return () => URL.revokeObjectURL(preview)
+  }, [preview])
+
+  // React resets a form's fields once its action settles. The file input
+  // empties with it, so the preview and the box must follow.
+  useEffect(() => {
+    const form = inputRef.current?.form
+    if (!form) return
+
+    const onReset = () => {
+      setPreview(null)
+      setRemove(false)
+      setError(null)
+    }
+
+    form.addEventListener('reset', onReset)
+    return () => form.removeEventListener('reset', onReset)
+  }, [])
+
+  const current = team ? teamLogoUrl(team) : null
+  const shown = preview ?? (remove ? null : current)
+
+  return (
+    <Field
+      id={id}
+      label="Logo (facultatif)"
+      hint={`PNG, JPEG, WebP ou SVG, ${MAX_LOGO_UPLOAD_BYTES / 1024 / 1024} Mo maximum. Les bords vides sont rognés et l’image réduite automatiquement ; elle s’affiche sur fond blanc.`}
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 ring-1 ring-black/10">
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={shown} alt="Aperçu du logo" className="size-full object-contain" />
+          ) : (
+            <ImageIcon aria-hidden className="size-5 text-ink-soft" />
+          )}
+        </span>
+
+        <input
+          ref={inputRef}
+          id={id}
+          name="logo"
+          type="file"
+          accept={LOGO_ACCEPT}
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+
+            if (file && file.size > MAX_LOGO_UPLOAD_BYTES) {
+              event.target.value = ''
+              setPreview(null)
+              setError(
+                `Ce fichier pèse ${(file.size / 1024 / 1024).toFixed(1)} Mo : ${MAX_LOGO_UPLOAD_BYTES / 1024 / 1024} Mo maximum.`,
+              )
+              return
+            }
+
+            setError(null)
+            setPreview(file ? URL.createObjectURL(file) : null)
+          }}
+          className="min-w-0 flex-1 text-sm text-ink-soft file:mr-3 file:rounded-lg file:border-0 file:bg-court-light file:px-3 file:py-2 file:text-sm file:font-semibold file:text-court-dark"
+        />
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-1.5 text-sm text-loss">
+          {error}
+        </p>
+      )}
+
+      {current && !preview && (
+        <label className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            name="removeLogo"
+            checked={remove}
+            onChange={(event) => setRemove(event.target.checked)}
+            className="size-4 accent-court"
+          />
+          Retirer le logo
+        </label>
+      )}
+    </Field>
+  )
+}
+
 function TeamForm({
   onSaved,
 }: {
@@ -169,13 +278,15 @@ function TeamForm({
         />
       </Field>
 
+      <LogoField id="team-logo" />
+
       <StateMessage state={state} />
       <SubmitButton>Ajouter l’équipe</SubmitButton>
     </form>
   )
 }
 
-export type TeamRow = { id: string; name: string; division: string }
+export type TeamRow = TeamDisplay & { division: string }
 
 function TeamEditForm({
   team,
@@ -214,6 +325,8 @@ function TeamEditForm({
         />
       </Field>
 
+      <LogoField id={`${team.id}-logo`} team={team} />
+
       <StateMessage state={state} />
       <SaveBar saveLabel="Enregistrer" remove={remove} />
     </form>
@@ -239,8 +352,10 @@ export function TeamCard({ team }: { team: TeamRow }) {
   const [deleteState, deleteAction] = useFormAction(deleteTeam, handleSaved)
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-sheet py-3 pr-3 pl-4">
-      <div className="min-w-0">
+    <li className="flex items-center gap-3 rounded-2xl border border-line bg-sheet py-3 pr-3 pl-3">
+      <TeamLogo team={team} size="md" />
+
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-ink">{team.name}</p>
         <p className="mt-0.5 text-xs text-ink-soft">{team.division}</p>
       </div>

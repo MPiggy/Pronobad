@@ -5,6 +5,7 @@ import { getActor } from '@/lib/auth/guards'
 import { db } from '@/lib/db'
 import { getCurrentSeason } from '@/lib/seasons'
 import { getMaxScore } from '@/lib/settings/queries'
+import { teamDisplaySelect } from '@/lib/teams/logo'
 import { Suspense, type ReactNode } from 'react'
 import { EmptyState, PageShell, SectionHeading } from '@/components/page-shell'
 import {
@@ -55,7 +56,7 @@ async function ManageContent() {
   const teams = season
     ? await db.team.findMany({
         where: { seasonId: season.id },
-        select: { id: true, name: true, division: true },
+        select: { ...teamDisplaySelect, division: true },
         orderBy: { name: 'asc' },
       })
     : []

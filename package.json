@@ -19,7 +19,8 @@
     "db:migrate": "npm run check:node && prisma migrate dev",
     "db:deploy": "npm run check:node && prisma migrate deploy",
     "db:studio": "npm run check:node && prisma studio",
-    "db:seed": "npm run check:node && tsx prisma/seed.ts"
+    "db:seed": "npm run check:node && tsx prisma/seed.ts",
+    "db:logos": "npm run check:node && tsx scripts/import-team-logos.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -32,6 +33,7 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "0.35.3",
     "zod": "4.4.3"
   },
   "devDependencies": {

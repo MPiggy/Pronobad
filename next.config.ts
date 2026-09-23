@@ -41,6 +41,14 @@ const csp = [
 const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
+  experimental: {
+    serverActions: {
+      // Team logos are uploaded through a Server Action. The default 1MB is
+      // under the 2MB logo limit (MAX_LOGO_UPLOAD_BYTES), which must fit here
+      // alongside the multipart overhead and the form's other fields.
+      bodySizeLimit: '3mb',
+    },
+  },
   async headers() {
     return [
       {

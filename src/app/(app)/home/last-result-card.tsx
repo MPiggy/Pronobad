@@ -1,4 +1,5 @@
 import type { MatchCardData } from '@/components/match-card'
+import { TeamLogo } from '@/components/team-logo'
 import { explainRule, ScoringRule } from '@/lib/scoring/rules'
 import { formatFullDate, formatScore } from '@/lib/format'
 
@@ -34,15 +35,21 @@ export function LastResultCard({ match }: { match: MatchCardData }) {
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
-          {match.homeTeam.name}
-        </p>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <TeamLogo team={match.homeTeam} />
+          <p className="min-w-0 truncate text-sm font-medium text-ink">
+            {match.homeTeam.name}
+          </p>
+        </div>
         <p className="shrink-0 text-lg font-bold tabular-nums text-ink">
           {formatScore(match.homeScore ?? 0, match.awayScore ?? 0)}
         </p>
-        <p className="min-w-0 flex-1 truncate text-right text-sm font-medium text-ink">
-          {match.awayTeam.name}
-        </p>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          <p className="min-w-0 truncate text-right text-sm font-medium text-ink">
+            {match.awayTeam.name}
+          </p>
+          <TeamLogo team={match.awayTeam} />
+        </div>
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-line/30 pt-3 text-sm">

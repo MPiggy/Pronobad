@@ -9,6 +9,8 @@ import { matchesTag } from '@/lib/predictions/queries'
 import { DEFAULT_MAX_SCORE, maxScoreField } from '@/lib/predictions/score-field'
 import { SETTINGS_ID, SETTINGS_TAG } from '@/lib/settings/queries'
 import { parseParisDateTimeLocal } from '@/lib/format'
+import { MAX_LOGO_UPLOAD_BYTES } from '@/lib/teams/logo'
+import { InvalidLogoError, normalizeLogo } from '@/lib/teams/logo-image'
 import type { FormState } from '@/lib/form-state'
 import { Prisma } from '@/generated/prisma/client'
 
@@ -140,6 +142,48 @@ const teamSchema = z.object({
     .max(60, { message: 'Cette division est trop longue (60 caractères maximum).' }),
 })
 
+/** What a team form asked of the logo. */
+type LogoChange =
+  | { kind: 'keep' }
+  | { kind: 'remove' }
+  | { kind: 'set'; data: Uint8Array<ArrayBuffer> }
+
+/**
+ * Reads the form's `logo` file and `removeLogo` box.
+ *
+ * Call it only after the superadmin check: normalising an image is the most
+ * expensive thing any action here does, and it is not offered to anyone else.
+ * A chosen file wins over a ticked box — picking a new logo is a replacement.
+ */
+async function readLogoChange(
+  formData: FormData,
+): Promise<LogoChange | { kind: 'error'; message: string }> {
+  const file = formData.get('logo')
+
+  // An empty file input still submits a nameless, zero-byte File.
+  if (file instanceof File && file.size > 0) {
+    if (file.size > MAX_LOGO_UPLOAD_BYTES) {
+      return {
+        kind: 'error',
+        message: `Ce logo est trop lourd (${MAX_LOGO_UPLOAD_BYTES / 1024 / 1024} Mo maximum).`,
+      }
+    }
+
+    try {
+      const data = await normalizeLogo(new Uint8Array(await file.arrayBuffer()))
+      return { kind: 'set', data }
+    } catch (error) {
+      if (error instanceof InvalidLogoError) {
+        return { kind: 'error', message: error.message }
+      }
+
+      throw error
+    }
+  }
+
+  return formData.get('removeLogo') === 'on' ? { kind: 'remove' } : { kind: 'keep' }
+}
+
 /** Creates a team in the current season. Superadmin only. */
 export async function createTeam(
   _prevState: FormState,
@@ -171,8 +215,17 @@ export async function createTeam(
       }
     }
 
+    const logo = await readLogoChange(formData)
+
+    if (logo.kind === 'error') return { status: 'error', message: logo.message }
+
     await db.team.create({
-      data: { seasonId: season.id, name, division },
+      data: {
+        seasonId: season.id,
+        name,
+        division,
+        logo: logo.kind === 'set' ? { create: { data: logo.data } } : undefined,
+      },
     })
 
     revalidateAdminPages()
@@ -204,7 +257,7 @@ const updateTeamSchema = z.object({
     .max(60, { message: 'Cette division est trop longue (60 caractères maximum).' }),
 })
 
-/** Renames a team and/or changes its division. Superadmin only. */
+/** Renames a team, changes its division, and/or replaces or removes its logo. Superadmin only. */
 export async function updateTeam(
   _prevState: FormState,
   formData: FormData,
@@ -236,9 +289,27 @@ export async function updateTeam(
       return { status: 'error', message: 'Cette équipe n’existe plus.' }
     }
 
-    await db.team.update({
-      where: { id: teamId },
-      data: { name, division },
+    const logo = await readLogoChange(formData)
+
+    if (logo.kind === 'error') return { status: 'error', message: logo.message }
+
+    await db.$transaction(async (tx) => {
+      await tx.team.update({
+        where: { id: teamId },
+        data: { name, division },
+      })
+
+      if (logo.kind === 'set') {
+        await tx.teamLogo.upsert({
+          where: { teamId },
+          create: { teamId, data: logo.data },
+          update: { data: logo.data },
+        })
+      } else if (logo.kind === 'remove') {
+        // `deleteMany`, not `delete`: removing a logo that is already gone
+        // (a second tab, a double submit) is a no-op rather than an error.
+        await tx.teamLogo.deleteMany({ where: { teamId } })
+      }
     })
 
     await db.auditLog.create({
@@ -248,7 +319,14 @@ export async function updateTeam(
         entity: 'Team',
         entityId: teamId,
         before,
-        after: { name, division, seasonId: before.seasonId },
+        after: {
+          name,
+          division,
+          seasonId: before.seasonId,
+          // What happened to the image, not the image itself.
+          ...(logo.kind === 'set' && { logo: 'replaced' }),
+          ...(logo.kind === 'remove' && { logo: 'removed' }),
+        },
       },
     })
 

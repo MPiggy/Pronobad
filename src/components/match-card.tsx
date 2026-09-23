@@ -1,5 +1,7 @@
 import { Clock } from 'lucide-react'
+import { TeamLogo } from '@/components/team-logo'
 import { lockState } from '@/lib/predictions/locking'
+import type { TeamDisplay } from '@/lib/teams/logo'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
 import {
   formatMatchDateTime,
@@ -25,8 +27,8 @@ export type MatchCardData = {
   resultEnteredAt: Date | null
   homeScore: number | null
   awayScore: number | null
-  homeTeam: { name: string }
-  awayTeam: { name: string }
+  homeTeam: TeamDisplay
+  awayTeam: TeamDisplay
   prediction: {
     homeScore: number
     awayScore: number
@@ -55,8 +57,8 @@ export function MatchCard({ match, now }: { match: MatchCardData; now: Date }) {
   const hasResult = match.homeScore !== null && match.awayScore !== null
 
   const rows = [
-    { name: match.homeTeam.name, score: match.homeScore },
-    { name: match.awayTeam.name, score: match.awayScore },
+    { team: match.homeTeam, score: match.homeScore },
+    { team: match.awayTeam, score: match.awayScore },
   ]
 
   return (
@@ -82,11 +84,12 @@ export function MatchCard({ match, now }: { match: MatchCardData; now: Date }) {
       </div>
 
       <div className="space-y-1.5">
-        {rows.map((team) => (
-          <div key={team.name} className="flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-sm font-medium text-ink">{team.name}</p>
+        {rows.map(({ team, score }) => (
+          <div key={team.id} className="flex items-center gap-2.5">
+            <TeamLogo team={team} />
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{team.name}</p>
             {hasResult && (
-              <p className="shrink-0 text-lg font-bold tabular-nums text-ink">{team.score}</p>
+              <p className="shrink-0 text-lg font-bold tabular-nums text-ink">{score}</p>
             )}
           </div>
         ))}

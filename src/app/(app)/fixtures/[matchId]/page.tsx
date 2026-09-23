@@ -17,6 +17,7 @@ import {
   formatTimeRemaining,
 } from '@/lib/format'
 import { PageShell } from '@/components/page-shell'
+import { TeamLogo } from '@/components/team-logo'
 import { PredictionForm } from './prediction-form'
 
 export const metadata: Metadata = {
@@ -80,17 +81,18 @@ async function MatchContent({
         <section className="rounded-2xl border border-line bg-sheet p-5">
           <div className="space-y-3">
             {[
-              { name: match.homeTeam.name, division: match.homeTeam.division, score: match.homeScore },
-              { name: match.awayTeam.name, division: match.awayTeam.division, score: match.awayScore },
-            ].map((team) => (
-              <div key={team.name} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
+              { team: match.homeTeam, score: match.homeScore },
+              { team: match.awayTeam, score: match.awayScore },
+            ].map(({ team, score }) => (
+              <div key={team.id} className="flex items-center gap-3">
+                <TeamLogo team={team} size="md" />
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">{team.name}</p>
                   <p className="text-xs text-ink-soft">{team.division}</p>
                 </div>
                 {hasResult && (
                   <span className="shrink-0 text-2xl font-bold tabular-nums text-ink">
-                    {team.score}
+                    {score}
                   </span>
                 )}
               </div>

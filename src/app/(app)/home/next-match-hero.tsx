@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Modal } from '@/components/modal'
+import { TeamLogo } from '@/components/team-logo'
 import { useToast } from '@/components/toast'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
@@ -48,14 +49,23 @@ export function NextMatchHero({
           PROCHAINE RENCONTRE
         </p>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="min-w-0 flex-1 text-lg font-bold text-balance text-shuttle-text">
-            {match.homeTeam.name}
-          </p>
-          <span className="shrink-0 text-sm font-semibold text-shuttle-text-soft">VS</span>
-          <p className="min-w-0 flex-1 text-right text-lg font-bold text-balance text-shuttle-text">
-            {match.awayTeam.name}
-          </p>
+        <div className="mt-4 flex items-start justify-between gap-3">
+          {[match.homeTeam, match.awayTeam].map((team, index) => (
+            <Fragment key={team.id}>
+              {index === 1 && (
+                // Level with the middle of the logos above the names.
+                <span className="mt-4 shrink-0 text-sm font-semibold text-shuttle-text-soft">
+                  VS
+                </span>
+              )}
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+                <TeamLogo team={team} size="lg" />
+                <p className="max-w-full text-lg font-bold text-balance break-words text-shuttle-text">
+                  {team.name}
+                </p>
+              </div>
+            </Fragment>
+          ))}
         </div>
 
         <div className="my-6 flex items-center justify-center">

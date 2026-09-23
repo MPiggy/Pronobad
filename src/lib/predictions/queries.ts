@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/lib/db'
+import { teamDisplaySelect } from '@/lib/teams/logo'
 
 /**
  * Reads for the member-facing prediction screens.
@@ -33,8 +34,8 @@ const matchWithPredictionSelect = (userId: string) =>
     // needs it to bound and total the inputs.
     maxScore: true,
     resultEnteredAt: true,
-    homeTeam: { select: { name: true } },
-    awayTeam: { select: { name: true } },
+    homeTeam: { select: teamDisplaySelect },
+    awayTeam: { select: teamDisplaySelect },
     predictions: {
       where: { userId },
       select: {
@@ -156,12 +157,17 @@ export async function getMatchForUser({
       ...matchWithPredictionSelect(userId),
       seasonId: true,
       round: true,
-      homeTeam: { select: { name: true, division: true } },
-      awayTeam: { select: { name: true, division: true } },
+      homeTeam: { select: { ...teamDisplaySelect, division: true } },
+      awayTeam: { select: { ...teamDisplaySelect, division: true } },
     },
   })
 
   if (!match) return null
+
+  // Team edits — a rename, a new logo — bust the season's tag, not each
+  // fixture's. Tagging this entry with it too keeps the page from showing the
+  // old team until `cacheLife` runs out.
+  cacheTag(matchesTag(match.seasonId))
 
   return withPrediction(match)
 }
