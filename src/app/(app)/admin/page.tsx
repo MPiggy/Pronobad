@@ -98,7 +98,14 @@ async function AdminContent() {
         resultEnteredAt: true,
         homeTeam: { select: { name: true } },
         awayTeam: { select: { name: true } },
-        _count: { select: { predictions: true } },
+        predictions: {
+          select: {
+            homeScore: true,
+            awayScore: true,
+            user: { select: { id: true, name: true } },
+            score: { select: { points: true, ruleApplied: true } },
+          },
+        },
       },
       orderBy: { playedAt: 'asc' },
     }),
@@ -126,7 +133,14 @@ async function AdminContent() {
       homeScore: match.homeScore,
       awayScore: match.awayScore,
       maxScore: match.maxScore,
-      predictionCount: match._count.predictions,
+      predictionCount: match.predictions.length,
+      bets: match.predictions.map((prediction) => ({
+        userId: prediction.user.id,
+        userName: prediction.user.name,
+        homeScore: prediction.homeScore,
+        awayScore: prediction.awayScore,
+        score: prediction.score,
+      })),
       status,
     }
   })

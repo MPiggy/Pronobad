@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { ChartColumn, Pencil } from 'lucide-react'
 import { Modal } from '@/components/modal'
 import { useToast } from '@/components/toast'
 import { ScorePairInput } from '@/components/score-pair-input'
@@ -19,6 +19,7 @@ import {
 } from '@/lib/format'
 import { deleteMatch, enterResult, withdrawResult } from './actions'
 import { FixtureForm, type TeamOption } from './fixture-form'
+import { FixtureStats } from './fixture-stats'
 
 /**
  * One fixture on the admin page, with the two things an admin does to it.
@@ -31,6 +32,15 @@ import { FixtureForm, type TeamOption } from './fixture-form'
  */
 
 export type FixtureStatus = 'awaiting' | 'upcoming' | 'finished'
+
+/** One member's prediction, as the stats modal lists it. */
+export type AdminBet = {
+  userId: string
+  userName: string
+  homeScore: number
+  awayScore: number
+  score: { points: number; ruleApplied: string } | null
+}
 
 export type AdminFixture = {
   id: string
@@ -46,6 +56,8 @@ export type AdminFixture = {
   /** The fixture's own rubber count, or null when it follows the default. */
   maxScore: number | null
   predictionCount: number
+  /** Every member's prediction, for the stats modal. */
+  bets: AdminBet[]
   /** Decided by the server against its own clock, so the card never disagrees with it. */
   status: FixtureStatus
 }
@@ -163,7 +175,7 @@ export function FixtureCard({
   /** The competition default rubber count, for fixtures without an override. */
   defaultMaxScore: number
 }) {
-  const [dialog, setDialog] = useState<'result' | 'edit' | null>(null)
+  const [dialog, setDialog] = useState<'result' | 'edit' | 'stats' | null>(null)
   const [closeRequest, setCloseRequest] = useState(0)
   const showToast = useToast()
 
@@ -232,6 +244,13 @@ export function FixtureCard({
           {hasResult ? 'Corriger le résultat' : 'Saisir le résultat'}
         </button>
 
+        <IconButton
+          label="Statistiques des pronostics"
+          onClick={() => setDialog('stats')}
+        >
+          <ChartColumn aria-hidden className="size-5" />
+        </IconButton>
+
         <IconButton label="Modifier la rencontre" onClick={() => setDialog('edit')}>
           <Pencil aria-hidden className="size-5" />
         </IconButton>
@@ -258,6 +277,17 @@ export function FixtureCard({
                 onSaved={handleSaved}
               />
             )}
+          </div>
+        </Modal>
+      )}
+
+      {dialog === 'stats' && (
+        <Modal title="Pronostics" onClose={() => setDialog(null)}>
+          <div className="space-y-5">
+            <p className="-mt-2 text-xs text-ink-soft">
+              {label} · J{fixture.round} · {formatMatchDateTime(fixture.playedAt)}
+            </p>
+            <FixtureStats fixture={fixture} />
           </div>
         </Modal>
       )}
