@@ -8,6 +8,7 @@ import { useToast } from '@/components/toast'
 import { explainLock, lockState } from '@/lib/predictions/locking'
 import { explainRule, type ScoringRule } from '@/lib/scoring/rules'
 import {
+  calendarDaysUntil,
   formatMatchCountdown,
   formatMatchDateTime,
   formatPoints,
@@ -36,6 +37,7 @@ export function NextMatchHero({
   const showToast = useToast()
 
   const state = lockState(match, now)
+  const isMatchDay = calendarDaysUntil(match.playedAt, now) <= 0
   const { prediction } = match
 
   return (
@@ -69,9 +71,19 @@ export function NextMatchHero({
         </div>
 
         <div className="my-6 flex items-center justify-center">
-          <span className="flex size-24 items-center justify-center rounded-full border-4 border-court text-2xl font-extrabold text-court">
-            {formatMatchCountdown(match.playedAt, now)}
-          </span>
+          {isMatchDay ? (
+            // "Aujourd'hui" doesn't fit the circle at countdown size, so match
+            // day finishes the J-N countdown with "Jour J" instead — and the
+            // circle fills in, so the day itself stands out from the run-up.
+            <span className="flex size-24 flex-col items-center justify-center rounded-full border-4 border-court bg-court text-shuttle shadow-lg shadow-court/30">
+              <span className="text-[11px] font-bold tracking-[0.2em]">JOUR</span>
+              <span className="-mt-1 text-4xl leading-none font-black">J</span>
+            </span>
+          ) : (
+            <span className="flex size-24 items-center justify-center rounded-full border-4 border-court text-2xl font-extrabold text-court">
+              {formatMatchCountdown(match.playedAt, now)}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-1.5 text-sm text-shuttle-text-soft">
